@@ -58,7 +58,7 @@ class ImageConverter
     
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void converter(halcon_bridge::HalconImagePtr halcon_ptr);
-    void barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height);
+    void barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr);
 
     // Functions exported from Halcon
     void scaleImageRange (HObject ho_Image, HObject *ho_ImageScaled,
@@ -189,20 +189,20 @@ void ImageConverter::converter(halcon_bridge::HalconImagePtr halcon_ptr)
     
 
     // Search for barcodes in the reduced image according to the ROI
-    barcodeFinder(ho_reduced_image,hv_image_width, hv_image_height);
+    barcodeFinder(ho_reduced_image,hv_image_width, hv_image_height, halcon_ptr);
   }
   // Else: search for the barcodes in the whole image
   else
   {
     //ROS_WARN("Bar model not found");
-    barcodeFinder(ho_scaled_image, hv_image_width, hv_image_height);
+    barcodeFinder(ho_scaled_image, hv_image_width, hv_image_height, halcon_ptr);
   }
 
   SetSystem("clip_region", hv_ClipRegion);
 }
 
 // This function finds the barcodes
-void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height)
+void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr)
 {
   // Halcon local iconic variables
   HObject ho_symbol_regions;     // Region where the barcode is located 
@@ -344,13 +344,13 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
 
     refills_msgs::Barcode barcode_msg;
     barcode_msg.barcode = hv_decoded_data[hv_i].S().Text();
-    barcode_msg.barcode_pose.header.frame_id = "camera_link";
+    barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
 
-    barcode_msg.barcode_pose.header.stamp = ros::Time::now();
-    barcode_msg.barcode_pose.pose.position.x = 0.0;
-    barcode_msg.barcode_pose.pose.position.y = 0.0;
-    barcode_msg.barcode_pose.pose.position.z = 0.1;
-    barcode_msg.barcode_pose.pose.orientation.x = 0.0;
+    barcode_msg.barcode_pose.header.stamp = halcon_ptr->header.stamp;
+    barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
+    barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
+    barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
+    barcode_msg.barcode_pose.pose.orientation.x = 0.0; //FIXME, convert halcon hv_rot to quaternion
     barcode_msg.barcode_pose.pose.orientation.y = 0.0;
     barcode_msg.barcode_pose.pose.orientation.z = 0.0;
     barcode_msg.barcode_pose.pose.orientation.w = 1.0;
