@@ -164,11 +164,8 @@ link_directories($ENV{HALCONROOT}/lib/$ENV{HALCONARCH})
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/barcode_finder_node.cpp)
 add_executable(image_converter src/image_converter.cpp)
 add_executable(image_publisher src/image_publisher.cpp)
-add_executable(image_publisher_stream src/image_publisher_stream.cpp)
-add_executable(image_subscriber src/image_subscriber.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -184,14 +181,6 @@ add_executable(image_subscriber src/image_subscriber.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(${PROJECT_NAME}_node
-   halconcpp
-   halcon
-   ${catkin_LIBRARIES}
-)
-   #From Benny
-   #${OpenCV_LIBRARIES}
-
 target_link_libraries(image_converter
    halconcpp
    halcon
@@ -206,19 +195,6 @@ target_link_libraries(image_publisher
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
    X11
-)
-
-target_link_libraries(image_publisher_stream
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   X11
-)
-
-target_link_libraries(image_subscriber
-   halconcpp
-   halcon
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
 )
 
 
