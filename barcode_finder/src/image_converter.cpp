@@ -27,13 +27,19 @@
 
 #include <sensor_msgs/image_encodings.h> ///-----------------------------------------------
 
+
+//Messages from the REFILLS project
+#include <refills_msgs/Barcode.h>
+
+
 using namespace HalconCpp;
 
 class ImageConverter
 {
   private:
     ros::NodeHandle nh_;  
-    ros::Publisher data_pub;                // Publisher for barcode information 
+    ros::Publisher data_pub;                // Publisher for barcode information
+    ros::Publisher barcode_pose_pub;        // Publisher for the estimated pose of the barcodes
     image_transport::ImageTransport it_;    // Create an ImageTransport instance
     image_transport::Subscriber image_sub_; // Subscriber to images
     image_transport::Publisher image_pub_;
@@ -76,6 +82,8 @@ ImageConverter::ImageConverter(std::string _bar_model,
   image_pub_ = it_.advertise("/image_converter/output_video", 500);
   // Advertise string data will be published
   data_pub = nh_.advertise<std_msgs::String>("barcode/data", 1);
+  barcode_pose_pub = nh_.advertise<refills_msgs::Barcode>("barcode/pose", 5);
+
 }
 
 ImageConverter::~ImageConverter()
@@ -333,6 +341,22 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     // Publish the barcode pose    
     msg.data = barcode_info;
     data_pub.publish(msg);
+
+    refills_msgs::Barcode barcode_msg;
+    barcode_msg.barcode = hv_decoded_data[hv_i].S().Text();
+    barcode_msg.barcode_pose.header.frame_id = "camera_link";
+
+    barcode_msg.barcode_pose.header.stamp = ros::Time::now();
+    barcode_msg.barcode_pose.pose.position.x = 0.0;
+    barcode_msg.barcode_pose.pose.position.y = 0.0;
+    barcode_msg.barcode_pose.pose.position.z = 0.1;
+    barcode_msg.barcode_pose.pose.orientation.x = 0.0;
+    barcode_msg.barcode_pose.pose.orientation.y = 0.0;
+    barcode_msg.barcode_pose.pose.orientation.z = 0.0;
+    barcode_msg.barcode_pose.pose.orientation.w = 1.0;
+    barcode_pose_pub.publish(barcode_msg);
+
+
   }
 
 HImage ho_ImageDump;
