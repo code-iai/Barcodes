@@ -202,165 +202,166 @@ void ImageConverter::converter(halcon_bridge::HalconImagePtr halcon_ptr)
 }
 
 // This function finds the barcodes
-void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr)
-{
+void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr) {
+
+
+
+
   // Halcon local iconic variables
   HObject ho_symbol_regions;     // Region where the barcode is located 
   HObject ho_cross;              // Object to cross the barcode corners
-	
+
   // Halcon local control variables
-  HTuple  hv_internal_param, hv_external_param;           // Camera parameters
-  HTuple  hv_internal_param_file, hv_external_param_file; // Camera parameters files
-  HTuple  hv_im_process_height, hv_im_process_width;      // Image height and width
-  HTuple  hv_window_handle;                               // Window to display image
-  HTuple  hv_pose_WCS;                                    // Pose of WCS
-  HTuple  hv_cam_H_wcs, hv_wcs_H_cam, hv_cam_H_obj;       // Homogeneous matrices
-  HTuple  hv_barcode_handle;                              // Barcode model ID
-  HTuple  hv_decoded_data;                                // Barcode number  
-  HTuple  hv_region_area, hv_region_center_row;           // Barcode properties
-  HTuple  hv_region_center_column;                        // Barcode properties
-  HTuple  hv_region_width, hv_region_height;              // Barcode properties
-  HTuple  hv_control_point_X, hv_control_point_Y;         // Real barcode coordinates
-  HTuple  hv_control_point_Z;                             // Real barcode coordinates
-  HTuple  hv_barcode_height;                              // Proportional height 
-  HTuple  hv_image_point_up, hv_image_point_down;         // Image barcode coordinates
-  HTuple  hv_image_point_left, hv_image_point_right;      // Image barcode coordinates
-  HTuple  hv_control_point_row, hv_control_point_column;  // Image barcode coordinates
-  HTuple  hv_number_of_barcodes;                          // Number of barcodes in image
-  HTuple  hv_i, end_val, step_val;                        // Variables in "for" cycle
-  HTuple  hv_pose_barcode, hv_pose_errors;                // Barcode pose
-  HTuple  hv_barcode, hv_barcode_label;                   // Barcode labels
-  HTuple  hv_x_trans, hv_y_trans, hv_z_trans;             // Barcode pose (Translation)
-  HTuple  hv_x_rot, hv_y_rot, hv_z_rot;                   // Barcode pose (Rotation)
+  HTuple hv_internal_param, hv_external_param;           // Camera parameters
+  HTuple hv_internal_param_file, hv_external_param_file; // Camera parameters files
+  HTuple hv_im_process_height, hv_im_process_width;      // Image height and width
+  HTuple hv_window_handle;                               // Window to display image
+  HTuple hv_pose_WCS;                                    // Pose of WCS
+  HTuple hv_cam_H_wcs, hv_wcs_H_cam, hv_cam_H_obj;       // Homogeneous matrices
+  HTuple hv_barcode_handle;                              // Barcode model ID
+  HTuple hv_decoded_data;                                // Barcode number
+  HTuple hv_region_area, hv_region_center_row;           // Barcode properties
+  HTuple hv_region_center_column;                        // Barcode properties
+  HTuple hv_region_width, hv_region_height;              // Barcode properties
+  HTuple hv_control_point_X, hv_control_point_Y;         // Real barcode coordinates
+  HTuple hv_control_point_Z;                             // Real barcode coordinates
+  HTuple hv_barcode_height;                              // Proportional height
+  HTuple hv_image_point_up, hv_image_point_down;         // Image barcode coordinates
+  HTuple hv_image_point_left, hv_image_point_right;      // Image barcode coordinates
+  HTuple hv_control_point_row, hv_control_point_column;  // Image barcode coordinates
+  HTuple hv_number_of_barcodes;                          // Number of barcodes in image
+  HTuple hv_i, end_val, step_val;                        // Variables in "for" cycle
+  HTuple hv_pose_barcode, hv_pose_errors;                // Barcode pose
+  HTuple hv_barcode, hv_barcode_label;                   // Barcode labels
+  HTuple hv_x_trans, hv_y_trans, hv_z_trans;             // Barcode pose (Translation)
+  HTuple hv_x_rot, hv_y_rot, hv_z_rot;                   // Barcode pose (Rotation)
 
   std::string barcode_info;                               // Barcode information
   std_msgs::String msg;                                   // Message to publish 
-    
-  // Read calibration parameters from file
-  hv_internal_param_file = internal_param.c_str();
-  ReadCamPar(hv_internal_param_file, &hv_internal_param);
-  hv_external_param_file = external_param.c_str();
-  ReadPose(hv_external_param_file, &hv_external_param);
-	
-  // Modify the pose of the WCS, rotation based on homogenous transformation matrices
-  PoseToHomMat3d(hv_external_param, &hv_cam_H_wcs);
-  HomMat3dRotateLocal(hv_cam_H_wcs, HTuple(180).TupleRad(), "x", &hv_cam_H_wcs);
-  HomMat3dToPose(hv_cam_H_wcs, &hv_pose_WCS);
-  HomMat3dInvert(hv_cam_H_wcs, &hv_wcs_H_cam);
-    
-  // Find barcode and get its properties
-  CreateBarCodeModel(HTuple(), HTuple(), &hv_barcode_handle);
-  FindBarCode(image_to_process, &ho_symbol_regions, hv_barcode_handle, "EAN-8", &hv_decoded_data);
-  AreaCenter(ho_symbol_regions, &hv_region_area, &hv_region_center_row, &hv_region_center_column);
-  RegionFeatures(ho_symbol_regions, "width", &hv_region_width);
-  RegionFeatures(ho_symbol_regions, "height", &hv_region_height);
-  ClearBarCodeModel(hv_barcode_handle);
 
-  // Display image within Halcon
-  GetImageSize(image_to_process, &hv_im_process_width, &hv_im_process_height);
-  if (HDevWindowStack::IsOpen())
-    CloseWindow(HDevWindowStack::Pop());
-  ResetObjDb(hv_im_process_width, hv_im_process_height, 0); 
-  SetWindowAttr("background_color","black");
-  OpenWindow(0,0,image_width, image_height,0,"invisible","",&hv_window_handle);  // --------------------------
-  HDevWindowStack::Push(hv_window_handle);                    // --------------------------
-  DispObj(image_to_process, HDevWindowStack::GetActive());      // --------------------------
+  try {
 
-  // Define the real barcode/rectangle-corners coordinates in meters
-  // (4 control points)
-  hv_control_point_X = (((HTuple(1.5).Append(19)).Append(1.5)).Append(19))/1000.0;
-  hv_control_point_Y = (((HTuple(6).Append(6)).Append(1)).Append(1))/1000.0;
-  hv_control_point_Z = (((HTuple(0).Append(0)).Append(0)).Append(0));
-  
-  // Determine the image barcode/rectangle-corners coordinates in pixels.
-  // Variable hv_barcode_height represents the proportional height
-  // of the real barcode rectangle.
-  hv_barcode_height = hv_region_width/3.5;
-  hv_image_point_up = hv_region_center_row-(hv_barcode_height/2);
-  hv_image_point_down = hv_region_center_row+(hv_barcode_height/2);
-  hv_image_point_left = hv_region_center_column-(hv_region_width/2);
-  hv_image_point_right = hv_region_center_column+(hv_region_width/2);
-  
-  // Find pose of each barcode
-  TupleLength(hv_decoded_data, &hv_number_of_barcodes);
-  end_val = hv_number_of_barcodes - 1;
-  step_val = 1;  
-  for (hv_i=0; hv_i.Continue(end_val, step_val); hv_i += step_val)
-  {
-    hv_barcode = ("BARCODE "+(hv_i + 1));
+    // Read calibration parameters from file
+    hv_internal_param_file = internal_param.c_str();
+    ReadCamPar(hv_internal_param_file, &hv_internal_param);
+    hv_external_param_file = external_param.c_str();
+    ReadPose(hv_external_param_file, &hv_external_param);
 
-    // Create two tuples with the values of the
-    // image barcode/rectangle-corners coordinates in pixels
-    hv_control_point_row.Clear();
-    hv_control_point_row.Append(HTuple(hv_image_point_up[hv_i]));
-    hv_control_point_row.Append(HTuple(hv_image_point_up[hv_i]));
-    hv_control_point_row.Append(HTuple(hv_image_point_down[hv_i]));
-    hv_control_point_row.Append(HTuple(hv_image_point_down[hv_i]));
-    hv_control_point_column.Clear();
-    hv_control_point_column.Append(HTuple(hv_image_point_left[hv_i]));
-    hv_control_point_column.Append(HTuple(hv_image_point_right[hv_i]));
-    hv_control_point_column.Append(HTuple(hv_image_point_left[hv_i]));
-    hv_control_point_column.Append(HTuple(hv_image_point_right[hv_i]));
-    
+    // Modify the pose of the WCS, rotation based on homogenous transformation matrices
+    PoseToHomMat3d(hv_external_param, &hv_cam_H_wcs);
+    HomMat3dRotateLocal(hv_cam_H_wcs, HTuple(180).TupleRad(), "x", &hv_cam_H_wcs);
+    HomMat3dToPose(hv_cam_H_wcs, &hv_pose_WCS);
+    HomMat3dInvert(hv_cam_H_wcs, &hv_wcs_H_cam);
+
+    // Find barcode and get its properties
+    CreateBarCodeModel(HTuple(), HTuple(), &hv_barcode_handle);
+    FindBarCode(image_to_process, &ho_symbol_regions, hv_barcode_handle, "EAN-8", &hv_decoded_data);
+    AreaCenter(ho_symbol_regions, &hv_region_area, &hv_region_center_row, &hv_region_center_column);
+    RegionFeatures(ho_symbol_regions, "width", &hv_region_width);
+    RegionFeatures(ho_symbol_regions, "height", &hv_region_height);
+    ClearBarCodeModel(hv_barcode_handle);
+
+    // Display image within Halcon
+    GetImageSize(image_to_process, &hv_im_process_width, &hv_im_process_height);
     if (HDevWindowStack::IsOpen())
-    {
-      // Visualize image barcode/rectangle-corners points
-      GenCrossContourXld(&ho_cross, hv_control_point_row,
-        hv_control_point_column, 20, 0.785398);
-      SetColor(HDevWindowStack::GetActive(),"green");
-      DispObj(ho_cross, HDevWindowStack::GetActive());
-      // Visualize barcode label
-      hv_barcode_label =
-        ((HTuple(hv_image_point_left[hv_i])*800)/hv_im_process_width).TupleInt();
-     // disp_message(hv_window_handle, hv_barcode, "window", 12, hv_barcode_label,
-     //   "green", "false");
+      CloseWindow(HDevWindowStack::Pop());
+    ResetObjDb(hv_im_process_width, hv_im_process_height, 0);
+    SetWindowAttr("background_color", "black");
+    OpenWindow(0, 0, image_width, image_height, 0, "invisible", "", &hv_window_handle);  // --------------------------
+    HDevWindowStack::Push(hv_window_handle);                    // --------------------------
+    DispObj(image_to_process, HDevWindowStack::GetActive());      // --------------------------
+
+    // Define the real barcode/rectangle-corners coordinates in meters
+    // (4 control points)
+    hv_control_point_X = (((HTuple(1.5).Append(19)).Append(1.5)).Append(19)) / 1000.0;
+    hv_control_point_Y = (((HTuple(6).Append(6)).Append(1)).Append(1)) / 1000.0;
+    hv_control_point_Z = (((HTuple(0).Append(0)).Append(0)).Append(0));
+
+    // Determine the image barcode/rectangle-corners coordinates in pixels.
+    // Variable hv_barcode_height represents the proportional height
+    // of the real barcode rectangle.
+    hv_barcode_height = hv_region_width / 3.5;
+    hv_image_point_up = hv_region_center_row - (hv_barcode_height / 2);
+    hv_image_point_down = hv_region_center_row + (hv_barcode_height / 2);
+    hv_image_point_left = hv_region_center_column - (hv_region_width / 2);
+    hv_image_point_right = hv_region_center_column + (hv_region_width / 2);
+
+    // Find pose of each barcode
+    TupleLength(hv_decoded_data, &hv_number_of_barcodes);
+    end_val = hv_number_of_barcodes - 1;
+    step_val = 1;
+    for (hv_i = 0; hv_i.Continue(end_val, step_val); hv_i += step_val) {
+      hv_barcode = ("BARCODE " + (hv_i + 1));
+
+      // Create two tuples with the values of the
+      // image barcode/rectangle-corners coordinates in pixels
+      hv_control_point_row.Clear();
+      hv_control_point_row.Append(HTuple(hv_image_point_up[hv_i]));
+      hv_control_point_row.Append(HTuple(hv_image_point_up[hv_i]));
+      hv_control_point_row.Append(HTuple(hv_image_point_down[hv_i]));
+      hv_control_point_row.Append(HTuple(hv_image_point_down[hv_i]));
+      hv_control_point_column.Clear();
+      hv_control_point_column.Append(HTuple(hv_image_point_left[hv_i]));
+      hv_control_point_column.Append(HTuple(hv_image_point_right[hv_i]));
+      hv_control_point_column.Append(HTuple(hv_image_point_left[hv_i]));
+      hv_control_point_column.Append(HTuple(hv_image_point_right[hv_i]));
+
+      if (HDevWindowStack::IsOpen()) {
+        // Visualize image barcode/rectangle-corners points
+        GenCrossContourXld(&ho_cross, hv_control_point_row,
+                           hv_control_point_column, 20, 0.785398);
+        SetColor(HDevWindowStack::GetActive(), "green");
+        DispObj(ho_cross, HDevWindowStack::GetActive());
+        // Visualize barcode label
+        hv_barcode_label =
+            ((HTuple(hv_image_point_left[hv_i]) * 800) / hv_im_process_width).TupleInt();
+        // disp_message(hv_window_handle, hv_barcode, "window", 12, hv_barcode_label,
+        //   "green", "false");
+      }
+
+      // Determine pose and homogeneous matrix of the barcode
+      VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
+                   hv_control_point_row, hv_control_point_column, hv_internal_param,
+                   "analytic", "error", &hv_pose_barcode, &hv_pose_errors);
+      PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
+
+      // Convert Barcode Pose to string
+      TupleString(hv_pose_barcode[0] * 100, ".3f", &hv_x_trans);
+      TupleString(hv_pose_barcode[1] * 100, ".3f", &hv_y_trans);
+      TupleString(hv_pose_barcode[2] * 100, ".3f", &hv_z_trans);
+      TupleString(hv_pose_barcode[3], ".3f", &hv_x_rot);
+      TupleString(hv_pose_barcode[4], ".3f", &hv_y_rot);
+      TupleString(hv_pose_barcode[5], ".3f", &hv_z_rot);
+      barcode_info = hv_barcode.S().Text() + std::string(": ") +
+                     hv_decoded_data[hv_i].S().Text() +
+                     std::string(" POSE: x: ") + hv_x_trans.S().Text() +
+                     std::string(" cm, y: ") + hv_y_trans.S().Text() +
+                     std::string(" cm, z: ") + hv_z_trans.S().Text() +
+                     std::string(" cm, X: ") + hv_x_rot.S().Text() +
+                     std::string("°, Y: ") + hv_y_rot.S().Text() +
+                     std::string("°, Z: ") + hv_z_rot.S().Text() + std::string("°");
+
+      // Publish the barcode pose
+      msg.data = barcode_info;
+      data_pub.publish(msg);
+
+      refills_msgs::Barcode barcode_msg;
+      barcode_msg.barcode = hv_decoded_data[hv_i].S().Text();
+      barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
+
+      barcode_msg.barcode_pose.header.stamp = halcon_ptr->header.stamp;
+      barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
+      barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
+      barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
+      barcode_msg.barcode_pose.pose.orientation.x = 0.0; //FIXME, convert halcon hv_rot to quaternion
+      barcode_msg.barcode_pose.pose.orientation.y = 0.0;
+      barcode_msg.barcode_pose.pose.orientation.z = 0.0;
+      barcode_msg.barcode_pose.pose.orientation.w = 1.0;
+      barcode_pose_pub.publish(barcode_msg);
     }
- 
-    // Determine pose and homogeneous matrix of the barcode
-    VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
-        hv_control_point_row, hv_control_point_column, hv_internal_param,
-        "analytic", "error", &hv_pose_barcode, &hv_pose_errors);
-    PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
- 
-    // Convert Barcode Pose to string
-    TupleString(hv_pose_barcode[0]*100, ".3f", &hv_x_trans);
-    TupleString(hv_pose_barcode[1]*100, ".3f", &hv_y_trans);
-    TupleString(hv_pose_barcode[2]*100, ".3f", &hv_z_trans);
-    TupleString(hv_pose_barcode[3], ".3f", &hv_x_rot);
-    TupleString(hv_pose_barcode[4], ".3f", &hv_y_rot);
-    TupleString(hv_pose_barcode[5], ".3f", &hv_z_rot);
-    barcode_info = hv_barcode.S().Text() + std::string(": ") +
-      hv_decoded_data[hv_i].S().Text() + 
-      std::string(" POSE: x: ") + hv_x_trans.S().Text() +
-      std::string(" cm, y: ") + hv_y_trans.S().Text() +
-      std::string(" cm, z: ") + hv_z_trans.S().Text() +
-      std::string(" cm, X: ") + hv_x_rot.S().Text() +
-      std::string("°, Y: ") + hv_y_rot.S().Text() +
-      std::string("°, Z: ") + hv_z_rot.S().Text() + std::string("°");  
 
-    // Publish the barcode pose    
-    msg.data = barcode_info;
-    data_pub.publish(msg);
-
-    refills_msgs::Barcode barcode_msg;
-    barcode_msg.barcode = hv_decoded_data[hv_i].S().Text();
-    barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
-
-    barcode_msg.barcode_pose.header.stamp = halcon_ptr->header.stamp;
-    barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
-    barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
-    barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
-    barcode_msg.barcode_pose.pose.orientation.x = 0.0; //FIXME, convert halcon hv_rot to quaternion
-    barcode_msg.barcode_pose.pose.orientation.y = 0.0;
-    barcode_msg.barcode_pose.pose.orientation.z = 0.0;
-    barcode_msg.barcode_pose.pose.orientation.w = 1.0;
-    barcode_pose_pub.publish(barcode_msg);
-
-
-  }
-
-HImage ho_ImageDump;
-DumpWindowImage(&ho_ImageDump, hv_window_handle);
+  HImage ho_ImageDump;
+  DumpWindowImage(&ho_ImageDump, hv_window_handle);
 
 
 //-------------------------------------------------------------------------------------
@@ -374,9 +375,13 @@ DumpWindowImage(&ho_ImageDump, hv_window_handle);
 
   halcon_ptr3->image = &ho_ImageDump;
   halcon_ptr3->encoding = "bgr8";
-  
+
   image_pub_.publish(halcon_ptr3->toImageMsg());
-  
+
+  } catch (HException &except) {
+    std::cout << "Exception while running FindBarCode" << std::endl;
+    std::cout << except.ErrorMessage() << std::endl;
+  }
 //-------------------------------------------------------------------------------------
 
 }
