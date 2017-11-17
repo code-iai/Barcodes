@@ -1,0 +1,7 @@
+<launch>
+  <node name="image_converter" pkg="barcode_finder" type="image_converter">
+    <param name="bar_model_file" type="str" value="/home/azucena/barcode/bar-model.shm"/>
+    <param name="internal_param_file" type="str" value="/home/azucena/barcode/calibration/myCalib/parameters"/>
+    <param name="external_param_file" type="str" value="/home/azucena/barcode/calibration/myCalib/pose"/>
+  </node>
+</launch>
