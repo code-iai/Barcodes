@@ -464,8 +464,6 @@ int main(int argc, char **argv)
 {
   int init_threads;
   std::string par_bar_model, par_internal_param, par_external_param;
-  HTuple hv_internal_param, hv_external_param;           // Camera parameters
-  HTuple hv_internal_param_file, hv_external_param_file; // Camera parameters files
   
   // When working under UNIX/Linux it is necessary to turn on the support for
   // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -500,11 +498,15 @@ int main(int argc, char **argv)
       //ros::Rate rate(0.002);
       //while (true)
       { 
-        // Read calibration parameters from file
-        hv_internal_param_file = par_internal_param.c_str();
-        ReadCamPar(hv_internal_param_file, &hv_internal_param);
-        hv_external_param_file = par_external_param.c_str();
-        ReadPose(hv_external_param_file, &hv_external_param);
+
+  HTuple hv_internal_param, hv_external_param;           // Camera parameters
+  HTuple hv_internal_param_file, hv_external_param_file; // Camera parameters files
+
+    // Read calibration parameters from file
+    hv_internal_param_file = par_internal_param.c_str();
+    ReadCamPar(hv_internal_param_file, &hv_internal_param);
+    hv_external_param_file = par_external_param.c_str();
+    ReadPose(hv_external_param_file, &hv_external_param);
  
         //ImageConverter ic(par_bar_model, par_internal_param, par_external_param);
         ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param);
