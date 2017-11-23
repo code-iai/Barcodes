@@ -149,8 +149,8 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(basic_shapes src/basic_shapes.cpp)
-target_link_libraries(basic_shapes ${catkin_LIBRARIES})
+add_executable(barcodes_displayer src/barcodes_displayer.cpp)
+target_link_libraries(barcodes_displayer ${catkin_LIBRARIES})
 
 add_executable(markers_subscriber src/markers_subscriber.cpp)
 target_link_libraries(markers_subscriber ${catkin_LIBRARIES})

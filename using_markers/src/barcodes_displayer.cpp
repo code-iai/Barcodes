@@ -1,5 +1,4 @@
 #include <iostream>
-#include <sstream>
 #include "ros/ros.h"
 #include <fstream>
 #include "using_markers/json.hpp"
@@ -9,7 +8,7 @@ using json = nlohmann::json;
 
 int main( int argc, char** argv )
 {
-  ros::init(argc, argv, "basic_shapes");
+  ros::init(argc, argv, "barcodes_displayer");
   ros::NodeHandle n;
   ros::Rate r(1);
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
@@ -30,7 +29,7 @@ int main( int argc, char** argv )
     // Set marker parameters
     marker.header.frame_id = "/my_frame";
     marker.header.stamp = ros::Time::now();
-    marker.ns = "basic_shapes";
+    marker.ns = "barcodes_displayer";
     marker.type = visualization_msgs::Marker::CUBE;
     marker.lifetime = ros::Duration();
 
@@ -38,13 +37,9 @@ int main( int argc, char** argv )
     marker.action = visualization_msgs::Marker::ADD;
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    //marker.scale.x = 0.017;
-    //marker.scale.y = 0.0001;
-    //marker.scale.z = 0.0045;
-
-    marker.scale.x = 0.027;
-    marker.scale.y = 0.002;
-    marker.scale.z = 0.0055;
+    marker.scale.x = 0.017;
+    marker.scale.y = 0.0001;
+    marker.scale.z = 0.0045;
 
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 1.0f;
