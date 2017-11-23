@@ -17,8 +17,8 @@ int main( int argc, char** argv )
   ifs >> j;
   std::cout << std::setw(4) << j << "\n\n";
 
-std::cout << j.is_array() << '\n';
-std::cout << j.at("/barcodes/1/code"_json_pointer) << '\n';
+  std::cout << j.is_array() << '\n';
+  std::cout << j.at("/barcodes/1/code"_json_pointer) << '\n';
 
   //}
 }
