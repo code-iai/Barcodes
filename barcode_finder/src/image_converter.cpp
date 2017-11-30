@@ -28,6 +28,8 @@
 //Messages from the REFILLS project
 #include <refills_msgs/Barcode.h>
 
+// Displaying Markers in Rviz
+#include <visualization_msgs/Marker.h>
 
 using namespace HalconCpp;
 
@@ -37,12 +39,14 @@ class ImageConverter
     ros::NodeHandle nh_;  
     ros::Publisher data_pub;                // Publisher for barcode information
     ros::Publisher barcode_pose_pub;        // Publisher for the estimated pose of the barcodes
+    ros::Publisher marker_pub;              // Publisher for barcode markers
     image_transport::ImageTransport it_;    // Create an ImageTransport instance
     image_transport::Subscriber image_sub_; // Subscriber to images
-    image_transport::Publisher image_pub_;
+    image_transport::Publisher image_pub_;  // Publish images
     std::string bar_model;                  // .shm file from Param. Server
-    HTuple internal_param;             // .cal file from Param. Server
-    HTuple external_param;             // Pose file from Param. Server
+    HTuple internal_param;                  // .cal file from Param. Server
+    HTuple external_param;                  // Pose file from Param. Server
+    int id;
   public:
     // Constructor
     ImageConverter(std::string, HTuple, HTuple);
@@ -50,8 +54,7 @@ class ImageConverter
     // Destructor
     ~ImageConverter();
   
-    // Functions
-    
+    // Functions    
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void converter(halcon_bridge::HalconImagePtr halcon_ptr);
     void barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr);
@@ -70,6 +73,8 @@ ImageConverter::ImageConverter(std::string _bar_model,
   internal_param = _internal_param;
   external_param = _external_param;
 
+  id = 0;
+
   // Subscribe to images using "image_transport"
   //image_sub_ = it_.subscribe("barcode/image", 1,
     //&ImageConverter::imageCallback, this);
@@ -79,6 +84,7 @@ ImageConverter::ImageConverter(std::string _bar_model,
   // Advertise string data will be published
   data_pub = nh_.advertise<std_msgs::String>("barcode/data", 1);
   barcode_pose_pub = nh_.advertise<refills_msgs::Barcode>("barcode/pose", 5);
+  marker_pub = nh_.advertise<visualization_msgs::Marker>("barcode/marker", 1);
 }
 
 
@@ -166,7 +172,7 @@ try
 catch (HException &except) {
     std::cout << "Exception while running Callback" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
-  }  
+  }
 
   // If "Bar model" was found: search for the barcodes only in the ROI
   if (hv_score_model > 0)
@@ -251,8 +257,30 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     hv_image_point_left = hv_region_center_column - (hv_region_width / 2);
     hv_image_point_right = hv_region_center_column + (hv_region_width / 2);
 
+
+// markers----------------------------------------------------------------------------------
+
+    visualization_msgs::Marker marker;
+    
+    marker.ns = "/image_converter";
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.lifetime = ros::Duration();
+    
+    // Set the scale of the marker -- 1x1x1 here means 1m on a side
+    marker.scale.x = 0.017;
+    marker.scale.y = 0.0001;
+    marker.scale.z = 0.0045;
+
+    // Set the color -- be sure to set alpha to something non-zero!
+    marker.color.r = 0.0f;
+    marker.color.g = 0.0f;
+    marker.color.b = 1.0f;
+    marker.color.a = 1.0;
+       
+
+// ----------------------------------------------------------------------------------
     // Find pose of each barcode
-    for (int i = 0; i < number_barcodes; i++) 
+    for (int i = 0; i < number_barcodes; i++)
     {
       hv_barcode = ("BARCODE " + (i + 1));
 
@@ -294,12 +322,14 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       // Publish the barcode pose
       msg.data = barcode_info;
       data_pub.publish(msg);
-
+ 
+      // Filling the refills message
       refills_msgs::Barcode barcode_msg;
       barcode_msg.barcode = hv_decoded_data[i].S().Text();
-      barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
 
+      barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
       barcode_msg.barcode_pose.header.stamp = halcon_ptr->header.stamp;
+
       barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
       barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
       barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
@@ -308,6 +338,25 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       barcode_msg.barcode_pose.pose.orientation.z = 0.0;
       barcode_msg.barcode_pose.pose.orientation.w = 1.0;
       barcode_pose_pub.publish(barcode_msg);
+
+      // Set marker parameters
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.header.frame_id = "/my_frame";
+      marker.header.stamp = ros::Time::now();
+ 
+      marker.id = id++;
+      std::cout<< id << std::endl;
+
+      marker.pose.position.x = hv_pose_barcode[0];
+      marker.pose.position.y = hv_pose_barcode[1];
+      marker.pose.position.z = hv_pose_barcode[2];
+      marker.pose.orientation.x = 0.0;
+      marker.pose.orientation.y = 0.0;
+      marker.pose.orientation.z = 0.0;
+      marker.pose.orientation.w = 1.0;
+
+      marker_pub.publish(marker);
+  
     }
 
     // Publish image over ROS
