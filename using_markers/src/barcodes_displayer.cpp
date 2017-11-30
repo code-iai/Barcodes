@@ -20,7 +20,6 @@ int main( int argc, char** argv )
   std::ifstream ifs("/home/azucena/ros_ws/src/Barcodes/using_markers/barcodes_data.json", std::ifstream::in);
   json j_array = json::array({});
   ifs >> j_array;
-  std::cout << std::setw(4) << j_array << "\n\n";
 
   while (ros::ok())
   {
@@ -48,36 +47,25 @@ int main( int argc, char** argv )
     marker.color.a = 1.0;
 
     // Set the pose of each marker and publish it
-    for(int i = 0; i <= j_array["shelfs"].size() - 1; i++) //Shelves
+    for(int i = 0; i <= j_array["shelf"].size() - 1; i++) //Shelves
     {
-      for(int j = 0; j <= j_array["shelfs"][i]["barcodes"].size() - 1; j++) //Barcodes
+      for(int j = 0; j <= j_array["shelf"][i]["barcode"].size() - 1; j++) //Barcodes
       {
         std:: string id_str = std::to_string(i) + std::to_string(j);
         int id = std::stoi(id_str);
         marker.id = id;
 
-        marker.pose.position.x = j_array["shelfs"][i]["barcodes"][j]["pose"]["position"]["x"].get<float>();
-        marker.pose.position.y = j_array["shelfs"][i]["barcodes"][j]["pose"]["position"]["y"].get<float>();
-        marker.pose.position.z = j_array["shelfs"][i]["barcodes"][j]["pose"]["position"]["z"].get<float>();
-        marker.pose.orientation.x = j_array["shelfs"][i]["barcodes"][j]["pose"]["orientation"]["x"].get<float>();
-        marker.pose.orientation.y = j_array["shelfs"][i]["barcodes"][j]["pose"]["orientation"]["y"].get<float>();
-        marker.pose.orientation.z = j_array["shelfs"][i]["barcodes"][j]["pose"]["orientation"]["z"].get<float>();
-        marker.pose.orientation.w = j_array["shelfs"][i]["barcodes"][j]["pose"]["orientation"]["w"].get<float>();
+        marker.pose.position.x = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["x"].get<float>();
+        marker.pose.position.y = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["y"].get<float>();
+        marker.pose.position.z = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["z"].get<float>();
+        marker.pose.orientation.x = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["x"].get<float>();
+        marker.pose.orientation.y = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["y"].get<float>();
+        marker.pose.orientation.z = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["z"].get<float>();
+        marker.pose.orientation.w = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["w"].get<float>();
 
         marker_pub.publish(marker);
       } 
     }
-
-    while (marker_pub.getNumSubscribers() < 1)
-    {
-      if (!ros::ok())
-      {
-        return 0;
-      }
-      ROS_WARN_ONCE("Please create a subscriber to the marker");
-      sleep(1);
-    }
-    ROS_WARN_ONCE("Subscriber created");
     r.sleep();
   }
 }

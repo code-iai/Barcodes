@@ -1,6 +1,6 @@
 {
-  "shelfs":[
-  {"barcodes":[
+  "shelf":[
+  {"barcode":[
    {"id": "00",
     "code": "12345",
     "pose":
@@ -61,7 +61,7 @@
   },
 
 
-  {"barcodes":[
+  {"barcode":[
    {"id": "10",
     "code": "12345",
     "pose":
@@ -115,7 +115,7 @@
   },
 
 
-  {"barcodes":[
+  {"barcode":[
    {"id": "20",
     "code": "12345",
     "pose":
@@ -162,7 +162,7 @@
   },
 
 
-  {"barcodes":[
+  {"barcode":[
    {"id": "30",
     "code": "12345",
     "pose":
@@ -216,7 +216,7 @@
   },
 
 
-{"barcodes":[
+{"barcode":[
    {"id": "40",
     "code": "12345",
     "pose":
@@ -256,7 +256,7 @@
   },
 
 
-  {"barcodes":[
+  {"barcode":[
    {"id": "50",
     "code": "12345",
     "pose":
