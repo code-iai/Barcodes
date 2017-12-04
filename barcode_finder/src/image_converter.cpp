@@ -31,6 +31,8 @@
 // Displaying Markers in Rviz
 #include <visualization_msgs/Marker.h>
 
+#include <tf/transform_datatypes.h>
+
 using namespace HalconCpp;
 
 class ImageConverter
@@ -267,9 +269,9 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     marker.lifetime = ros::Duration();
     
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker.scale.x = 0.017;
-    marker.scale.y = 0.0001;
-    marker.scale.z = 0.0045;
+    marker.scale.x = 0.17;
+    marker.scale.y = 0.001;
+    marker.scale.z = 0.045;
 
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 0.0f;
@@ -277,6 +279,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     marker.color.b = 1.0f;
     marker.color.a = 1.0;
        
+    
 
 // ----------------------------------------------------------------------------------
     // Find pose of each barcode
@@ -302,6 +305,10 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
                    hv_control_point_row, hv_control_point_column, internal_param,
                    "analytic", "error", &hv_pose_barcode, &hv_pose_errors);
       PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
+
+      // Create quaternion from roll/pitch/yaw (in radians)
+      tf::Quaternion q = tf::createQuaternionFromRPY((hv_pose_barcode[3].D()*3.1416/180),
+        (hv_pose_barcode[4]*3.1416/180), (hv_pose_barcode[5]*3.1416/180));
 
       // Convert Barcode Pose to string
       TupleString(hv_pose_barcode[0] * 100, ".3f", &hv_x_trans);
@@ -333,27 +340,26 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
       barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
       barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
-      barcode_msg.barcode_pose.pose.orientation.x = 0.0; //FIXME, convert halcon hv_rot to quaternion
-      barcode_msg.barcode_pose.pose.orientation.y = 0.0;
-      barcode_msg.barcode_pose.pose.orientation.z = 0.0;
-      barcode_msg.barcode_pose.pose.orientation.w = 1.0;
+      barcode_msg.barcode_pose.pose.orientation.x = q[0];
+      barcode_msg.barcode_pose.pose.orientation.y = q[1];
+      barcode_msg.barcode_pose.pose.orientation.z = q[2];
+      barcode_msg.barcode_pose.pose.orientation.w = q[3];
       barcode_pose_pub.publish(barcode_msg);
 
       // Set marker parameters
       marker.action = visualization_msgs::Marker::ADD;
-      marker.header.frame_id = "/my_frame";
-      marker.header.stamp = ros::Time::now();
+      marker.header.frame_id = "/camera_link";
+      marker.header.stamp = halcon_ptr->header.stamp;
  
-      marker.id = id++;
-      std::cout<< id << std::endl;
-
+      marker.id = id++; //_-------------------------------------------------FIXME
+      
       marker.pose.position.x = hv_pose_barcode[0];
-      marker.pose.position.y = hv_pose_barcode[1];
-      marker.pose.position.z = hv_pose_barcode[2];
-      marker.pose.orientation.x = 0.0;
-      marker.pose.orientation.y = 0.0;
-      marker.pose.orientation.z = 0.0;
-      marker.pose.orientation.w = 1.0;
+      marker.pose.position.y = hv_pose_barcode[2];
+      marker.pose.position.z = hv_pose_barcode[1];
+      marker.pose.orientation.x = q[0];
+      marker.pose.orientation.y = q[1];
+      marker.pose.orientation.z = q[2];
+      marker.pose.orientation.w = q[3];
 
       marker_pub.publish(marker);
   
@@ -513,7 +519,6 @@ int main(int argc, char **argv)
     }
     else 
     {
-      { 
         // Read calibration parameters from file
         hv_internal_param_file = par_internal_param.c_str();
         ReadCamPar(hv_internal_param_file, &hv_internal_param);
@@ -522,8 +527,7 @@ int main(int argc, char **argv)
  
         //ImageConverter ic(par_bar_model, par_internal_param, par_external_param);
         ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param);
-        ros::spin();
-      }    
+        ros::spin();   
     }
   }
   else
