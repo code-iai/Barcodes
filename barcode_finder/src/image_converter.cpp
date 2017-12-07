@@ -33,6 +33,8 @@
 
 #include <tf/transform_datatypes.h>
 
+#include <vector>
+
 using namespace HalconCpp;
 
 class ImageConverter
@@ -48,10 +50,12 @@ class ImageConverter
     std::string bar_model;                  // .shm file from Param. Server
     HTuple internal_param;                  // .cal file from Param. Server
     HTuple external_param;                  // Pose file from Param. Server
-    int id;
+    int id;                                 //-----------------------------------FIXME
+    std::vector<std::vector<double>> barcodes_vector;
+    
   public:
     // Constructor
-    ImageConverter(std::string, HTuple, HTuple);
+    ImageConverter(std::string, HTuple, HTuple, std::vector<std::vector<double>>);
 
     // Destructor
     ~ImageConverter();
@@ -68,12 +72,14 @@ class ImageConverter
 
 // Constructor is initialized with the 3 parameters in the Param. Server 
 ImageConverter::ImageConverter(std::string _bar_model,
-  HTuple _internal_param, HTuple _external_param) : it_(nh_)
+  HTuple _internal_param, HTuple _external_param,
+  std::vector<std::vector<double>> _barcodes_vector) : it_(nh_)
 {
   // Initialize class members
   bar_model = _bar_model;
   internal_param = _internal_param;
   external_param = _external_param;
+  barcodes_vector = _barcodes_vector;
 
   id = 0;
 
@@ -134,7 +140,7 @@ cv_bridge::CvImagePtr cv_ptr;
 void ImageConverter::converter(halcon_bridge::HalconImagePtr halcon_ptr)
 { 
   // Halcon local iconic variables
-  HObject  ho_gray_image;         // Graysaled and contrast-adjusted images
+  HObject  ho_gray_image;         // Grayscaled and contrast-adjusted images
   HObject  ho_ROI;                // ROI according to "Bar model"
 
   HImage *halcon_image;                             // Halcon image to process  
@@ -159,7 +165,7 @@ try
   GetImageSize(*halcon_image, &hv_image_width, &hv_image_height);
   
   // Adjust image contrast
-  scaleImageRange(*halcon_image, &ho_scaled_image, 10, 220); 
+  scaleImageRange(*halcon_image, &ho_scaled_image, 0, 200); 
 
   // Read "Bar model" from parameter in Param. Server
   hv_bar_model = bar_model.c_str();
@@ -212,7 +218,6 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
   HTuple hv_image_point_up, hv_image_point_down;         // Image barcode coordinates
   HTuple hv_image_point_left, hv_image_point_right;      // Image barcode coordinates
   HTuple hv_control_point_row, hv_control_point_column;  // Image barcode coordinates
-HTuple hv_control_point_row_old, hv_control_point_column_old;  // Image barcode coordinates -------------
   HTuple hv_pose_barcode, hv_pose_errors;                // Barcode pose
   HTuple hv_barcode, hv_barcode_label;                   // Barcode labels
   HTuple hv_x_trans, hv_y_trans, hv_z_trans;             // Barcode pose (Translation)
@@ -225,16 +230,14 @@ HTuple hv_control_point_row_old, hv_control_point_column_old;  // Image barcode 
   int number_barcodes;                                   // Number of barcodes in image
   std::string barcode_info;                              // Barcode information
   std_msgs::String msg;                                  // Message to publish 
-
-  HTuple grayvalue(120.0, 120.0);
-  HObject  ho_cross1, ho_cross2, ho_cross3, ho_cross4;
+  HTuple grayvalue(255.0, 255.0);
 
   
     // Modify the pose of the WCS, rotation based on homogenous transformation matrices
     PoseToHomMat3d(external_param, &hv_cam_H_wcs);
     HomMat3dRotateLocal(hv_cam_H_wcs, HTuple(180).TupleRad(), "x", &hv_cam_H_wcs);
     HomMat3dToPose(hv_cam_H_wcs, &hv_pose_WCS);
-    HomMat3dInvert(hv_cam_H_wcs, &hv_wcs_H_cam);
+  //  HomMat3dInvert(hv_cam_H_wcs, &hv_wcs_H_cam);
 
     // Find barcode and get its properties
     hv_barcode_handle.CreateBarCodeModel(HTuple(), HTuple());
@@ -244,47 +247,49 @@ HTuple hv_control_point_row_old, hv_control_point_column_old;  // Image barcode 
     AreaCenter(ho_symbol_regions, &hv_region_area, &hv_region_center_row, &hv_region_center_column);
     RegionFeatures(ho_symbol_regions, "width", &hv_region_width);
     RegionFeatures(ho_symbol_regions, "height", &hv_region_height);
-//hv_barcode_handle->ClearBarCodeModel();
 
     // Define the real barcode/rectangle-corners coordinates in meters
     // (4 control points)
     hv_control_point_X = (((HTuple(1.5).Append(19)).Append(1.5)).Append(19)) / 1000.0;
     hv_control_point_Y = (((HTuple(6).Append(6)).Append(1)).Append(1)) / 1000.0;
     hv_control_point_Z = (((HTuple(0).Append(0)).Append(0)).Append(0));
-
-    // Determine the image barcode/rectangle-corners coordinates in pixels.
-    // Variable hv_barcode_height represents the proportional height
-    // of the real barcode rectangle.
-    hv_barcode_height = hv_region_width / 3.5;
-    hv_image_point_up = hv_region_center_row - (hv_barcode_height / 2);
-    hv_image_point_down = hv_region_center_row + (hv_barcode_height / 2);
-    hv_image_point_left = hv_region_center_column - (hv_region_width / 2);
-    hv_image_point_right = hv_region_center_column + (hv_region_width / 2);
+   
 
     // Create a barcode-marker to display it in rviz
     visualization_msgs::Marker marker;
     marker.ns = "/image_converter";
     marker.type = visualization_msgs::Marker::CUBE;
     marker.lifetime = ros::Duration();
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.header.frame_id = "/camera_link";
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
     marker.scale.x = 0.17;
     marker.scale.y = 0.001;
     marker.scale.z = 0.045;
     // Set the color -- be sure to set alpha to something non-zero!
-    marker.color.r = 0.0f;
+    marker.color.r = 1.0f;
     marker.color.g = 0.0f;
     marker.color.b = 1.0f;
     marker.color.a = 1.0;
   
 try{
-
     // Find pose of each barcode
     for (int i = 0; i < number_barcodes; i++)
-    {
-      hv_barcode = ("BARCODE " + (i + 1));
+    {      
+
+// Old method--------------------------------------------------------------------------------------------
+      // Determine the image barcode/rectangle-corners coordinates in pixels.
+      // Variable hv_barcode_height represents the proportional height
+      // of the real barcode rectangle.
+      hv_barcode_height = hv_region_width / 3.5;
+      hv_image_point_up = hv_region_center_row - (hv_barcode_height / 2);
+      hv_image_point_down = hv_region_center_row + (hv_barcode_height / 2);
+      hv_image_point_left = hv_region_center_column - (hv_region_width / 2);
+      hv_image_point_right = hv_region_center_column + (hv_region_width / 2);
 
       // Create two tuples with the values of the
       // image barcode/rectangle-corners coordinates in pixels
+      HTuple hv_control_point_row_old, hv_control_point_column_old;  // Image barcode coordinates
       hv_control_point_row_old.Clear();
       hv_control_point_row_old.Append(HTuple(hv_image_point_up[i]));
       hv_control_point_row_old.Append(HTuple(hv_image_point_up[i]));
@@ -296,85 +301,79 @@ try{
       hv_control_point_column_old.Append(HTuple(hv_image_point_right[i]));
       hv_control_point_column_old.Append(HTuple(hv_image_point_left[i]));
       hv_control_point_column_old.Append(HTuple(hv_image_point_right[i]));
+// End Old method--------------------------------------------------------------------------------------------
 
-// Corners--------------------------------------------------------------------------------------------
+      // Find the corners of the barcode
+
       // Local iconic variables
- 
+      HObject  ho_region_of_interest;
+      HObject  ho_barcode_rectangle, ho_region_mean;
+      HObject  ho_region_threshold, ho_struct_element, ho_region_opening;
+      HObject  ho_connected_regions, ho_region_transformed, ho_selected_reg_area;
+      HObject  ho_selected_reg_height;
+      HRegion ho_sorted_regions;
+      // Local control variables
+      HTuple  hv_height_value, hv_height_value_mean;
+      HTuple  hv_height_value_max, hv_area_value, hv_area_value_max;
+      HTuple  hv_number_regions, hv_number_of_regions, hv_region_row1;
+      HTuple  hv_region_column1, hv_region_row2, hv_region_column2;
+      HTuple  hv_region_row11;
 
-  HObject  ho_region_of_interest;
-  HObject  ho_barcode_rectangle, ho_region_mean;
-  HObject  ho_region_threshold, ho_struct_element, ho_region_opening;
-  HObject  ho_connected_regions, ho_region_transformed, ho_selected_reg_area;
-  HObject  ho_selected_reg_height;
-  HRegion ho_sorted_regions;
-
-
-  // Local control variables
-  HTuple  hv_height_value, hv_height_value_mean;
-  HTuple  hv_height_value_max, hv_area_value, hv_area_value_max;
-  HTuple  hv_number_regions, hv_number_of_regions, hv_region_row1;
-  HTuple  hv_region_column1, hv_region_row2, hv_region_column2;
-  HTuple  hv_region_row11;
-
-
+      // Create a ROI for the barcode
       GenRectangle2(&ho_region_of_interest, hv_region_center_row[i], hv_region_center_column[i], 0, 
-        hv_region_width[i]/2 + 5, hv_region_height[i]/2 + 10);
+      hv_region_width[i]/2 + 5, hv_region_height[i]/2 + 10);
       ReduceDomain(image_to_process, ho_region_of_interest, &ho_barcode_rectangle);
 
+      // Process the ROI
       MeanImage(ho_barcode_rectangle, &ho_region_mean, 101, 101);
-  DynThreshold(ho_barcode_rectangle, ho_region_mean, &ho_region_threshold, 5, "dark");
-  GenRectangle2(&ho_struct_element, 100, 100, 0, 1, 1);
-  Opening(ho_region_threshold, ho_struct_element, &ho_region_opening);
-  Connection(ho_region_opening, &ho_connected_regions);
-  ShapeTrans(ho_connected_regions, &ho_region_transformed, "rectangle2");
+      DynThreshold(ho_barcode_rectangle, ho_region_mean, &ho_region_threshold, 5, "dark");
+      GenRectangle2(&ho_struct_element, 100, 100, 0, 1, 1);
+      Opening(ho_region_threshold, ho_struct_element, &ho_region_opening);
+      Connection(ho_region_opening, &ho_connected_regions);
+      ShapeTrans(ho_connected_regions, &ho_region_transformed, "rectangle2");
 
-  //*Get mean and max value of Height
-  RegionFeatures(ho_region_transformed, "height", &hv_height_value);
-  TupleMean(hv_height_value, &hv_height_value_mean);
-  TupleMax(hv_height_value, &hv_height_value_max);
+      // Get mean and max value of Barcode-Regions Height
+      RegionFeatures(ho_region_transformed, "height", &hv_height_value);
+      TupleMean(hv_height_value, &hv_height_value_mean);
+      TupleMax(hv_height_value, &hv_height_value_max);
 
-  //*Get mean and max value of Area
-  RegionFeatures(ho_region_transformed, "area", &hv_area_value);
-  TupleMax(hv_area_value, &hv_area_value_max);
+      // Get mean and max value of Barcode-Regions Area
+      RegionFeatures(ho_region_transformed, "area", &hv_area_value);
+      TupleMax(hv_area_value, &hv_area_value_max);
 
-  //*Discard regions with a small area
-  SelectShape(ho_region_transformed, &ho_selected_reg_area, "area", "and", 60, hv_area_value_max);
+      // Discard regions with a small area
+      SelectShape(ho_region_transformed, &ho_selected_reg_area, "area", "and", 60, hv_area_value_max);
 
-  //*Discard regions with a small height
-  SelectShape(ho_selected_reg_area, &ho_selected_reg_height, "height", "and", hv_height_value_mean, 
-      hv_height_value_max);
+      // Discard regions with small height
+      SelectShape(ho_selected_reg_area, &ho_selected_reg_height, "height", "and", hv_height_value_mean, 
+        hv_height_value_max);
 
-  SortRegion(ho_selected_reg_height, &ho_sorted_regions, "first_point", "true", "column");
-  RegionFeatures(ho_sorted_regions, "connect_num", &hv_number_regions);
-  TupleLength(hv_number_regions, &hv_number_of_regions);
+      // Sort Barcode-Regions to find the corners
+      SortRegion(ho_selected_reg_height, &ho_sorted_regions, "first_point", "true", "column");
+      RegionFeatures(ho_sorted_regions, "connect_num", &hv_number_regions);
+      TupleLength(hv_number_regions, &hv_number_of_regions);
+      RegionFeatures(ho_sorted_regions, "row1", &hv_region_row1);
+      RegionFeatures(ho_sorted_regions, "column1", &hv_region_column1);
+      RegionFeatures(ho_sorted_regions, "row2", &hv_region_row2);
+      RegionFeatures(ho_sorted_regions, "column2", &hv_region_column2);
+      RegionFeatures(ho_sorted_regions, "height", &hv_region_row11);
 
-  RegionFeatures(ho_sorted_regions, "row1", &hv_region_row1);
-  RegionFeatures(ho_sorted_regions, "column1", &hv_region_column1);
-  RegionFeatures(ho_sorted_regions, "row2", &hv_region_row2);
-  RegionFeatures(ho_sorted_regions, "column2", &hv_region_column2);
-  RegionFeatures(ho_sorted_regions, "height", &hv_region_row11);
+      // Display the Barcode-Regions in the image
+      image_regions = image_to_process.PaintRegion(ho_sorted_regions, grayvalue, HString("fill"));
 
-  image_regions = image_to_process.PaintRegion(ho_sorted_regions, grayvalue, HString("fill"));
-
-// Create two tuples with the values of the
+      // Create two tuples with the values of the
       // image barcode/rectangle-corners coordinates in pixels
       hv_control_point_row.Clear();
       hv_control_point_row.Append(HTuple(hv_region_row1[0]));
-      hv_control_point_row.Append(HTuple(hv_region_row2[hv_number_of_regions-1]));
+      hv_control_point_row.Append(HTuple(hv_region_row2[hv_number_of_regions-1] - hv_region_row11[hv_number_of_regions-1]));
       hv_control_point_row.Append(HTuple(hv_region_row2[0]));
       hv_control_point_row.Append(HTuple(hv_region_row2[hv_number_of_regions-1]));
 
       hv_control_point_column.Clear();
       hv_control_point_column.Append(HTuple(hv_region_column1[0]));
-      hv_control_point_column.Append(HTuple(hv_region_row11[hv_number_of_regions-1]));
+      hv_control_point_column.Append(HTuple(hv_region_column2[hv_number_of_regions-1]));
       hv_control_point_column.Append(HTuple(hv_region_column1[0]));
       hv_control_point_column.Append(HTuple(hv_region_column2[hv_number_of_regions-1]));
-
-
-
-
-
-// End corners--------------------------------------------------------------------------------------------
 
 
       // Determine pose and homogeneous matrix of the barcode
@@ -388,6 +387,7 @@ try{
         (hv_pose_barcode[4]*3.1416/180), (hv_pose_barcode[5]*3.1416/180));
 
       // Convert Barcode Pose to string
+      hv_barcode = ("BARCODE " + (i + 1));
       TupleString(hv_pose_barcode[0] * 100, ".3f", &hv_x_trans);
       TupleString(hv_pose_barcode[1] * 100, ".3f", &hv_y_trans);
       TupleString(hv_pose_barcode[2] * 100, ".3f", &hv_z_trans);
@@ -403,7 +403,7 @@ try{
                      std::string("°, Y: ") + hv_y_rot.S().Text() +
                      std::string("°, Z: ") + hv_z_rot.S().Text() + std::string("°");
 
-      // Publish the barcode pose
+      // Publish the barcode pose as a string
       msg.data = barcode_info;
       data_pub.publish(msg);
  
@@ -422,26 +422,70 @@ try{
       barcode_pose_pub.publish(barcode_msg);
 
       // Set marker parameters
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.header.frame_id = "/camera_link";
       marker.header.stamp = halcon_ptr->header.stamp;
-      marker.id = id++; //_-------------------------------------------------FIXME
-      marker.pose.position.x = hv_pose_barcode[0];
-      marker.pose.position.y = hv_pose_barcode[2];
-      marker.pose.position.z = hv_pose_barcode[1];
-      marker.pose.orientation.x = q[0];
-      marker.pose.orientation.y = q[1];
-      marker.pose.orientation.z = q[2];
-      marker.pose.orientation.w = q[3];
-      marker_pub.publish(marker);
+      marker.id = barcodes_vector.size();
+
+      // Fill a "row" vector with the barcode information
+      std::vector<double> row(8);
+      row[0] = std::stod(hv_decoded_data[i].S().Text());
+      row[1] = hv_pose_barcode[0];
+      row[2] = hv_pose_barcode[1];
+      row[3] = hv_pose_barcode[2];
+      row[4] = q[0];
+      row[5] = q[1];
+      row[6] = q[2];
+      row[7] = q[3];
+
+      // Check if the barcode has already been detected
+      int b = 0;
+      for(int a = 0; a < barcodes_vector.size(); a++)
+      {
+        if (barcodes_vector[a][0] == row[0])
+        {
+          b = 1;
+          // Update barcode with the average
+          barcodes_vector[a][1] = (barcodes_vector[a][1] + row[1])/2;
+          barcodes_vector[a][2] = (barcodes_vector[a][2] + row[2])/2;
+          barcodes_vector[a][3] = (barcodes_vector[a][3] + row[3])/2;
+          barcodes_vector[a][4] = (barcodes_vector[a][4] + row[4])/2;
+          barcodes_vector[a][5] = (barcodes_vector[a][5] + row[5])/2;
+          barcodes_vector[a][6] = (barcodes_vector[a][6] + row[6])/2;
+          barcodes_vector[a][7] = (barcodes_vector[a][7] + row[7])/2;
+
+          marker.pose.position.x = barcodes_vector[a][1];
+          marker.pose.position.y = barcodes_vector[a][3];
+          marker.pose.position.z = barcodes_vector[a][2];
+          marker.pose.orientation.x = barcodes_vector[a][4];
+          marker.pose.orientation.y = barcodes_vector[a][5];
+          marker.pose.orientation.z = barcodes_vector[a][6];
+          marker.pose.orientation.w = barcodes_vector[a][7];
   
+          // Publish marker
+          marker_pub.publish(marker);
+        }
+      }
+      if(b==0)
+      {
+        barcodes_vector.push_back(row);
+
+        marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][1];
+        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][3];
+        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][2];
+        marker.pose.orientation.x = barcodes_vector[barcodes_vector.size() - 1][4];
+        marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][5];
+        marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][6];
+        marker.pose.orientation.w = barcodes_vector[barcodes_vector.size() - 1][7];
+ 
+        // Publish marker
+        marker_pub.publish(marker);
+      }
     }//for
 
  }//try
  catch (HException &except) {
     std::cout << "Exception while running FindBarCode" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
-  }//catch
+  }
 try{
     // Publish image over ROS
     halcon_bridge::HalconImage *halcon_img_ptr(new halcon_bridge::HalconImage);
@@ -450,7 +494,6 @@ try{
     halcon_img_ptr->encoding = halcon_ptr->encoding;
     if (number_barcodes>0)
     {
-     // image_regions = image_to_process.PaintRegion(ho_symbol_regions, grayvalue, HString("fill"));
       halcon_img_ptr->image = &image_regions;
     }
     else
@@ -463,8 +506,7 @@ try{
  catch (HException &except) {
     std::cout << "Exception while running FindBarCode2" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
-  }//catch
-
+  }
 }
 
 
@@ -569,6 +611,7 @@ int main(int argc, char **argv)
   std::string par_bar_model, par_internal_param, par_external_param;
   HTuple hv_internal_param, hv_external_param;               // Camera parameters
   HTuple hv_internal_param_file, hv_external_param_file;     // Camera parameters files
+  std::vector<std::vector<double>> barcodes_vector;
   
   // When working under UNIX/Linux it is necessary to turn on the support for
   // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -607,7 +650,7 @@ int main(int argc, char **argv)
         ReadPose(hv_external_param_file, &hv_external_param);
  
         //ImageConverter ic(par_bar_model, par_internal_param, par_external_param);
-        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param);
+        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param, barcodes_vector);
         ros::spin();   
     }
   }
@@ -615,5 +658,6 @@ int main(int argc, char **argv)
   {
     ROS_ERROR("XInitThreads() initialization was not successful.");
   }
+
   return 0;
 }
