@@ -15,6 +15,8 @@
 #include <halcon_image.h>
 #include "HalconCpp.h"
 
+#include <tf/transform_listener.h>
+
 // When working under UNIX/Linux it is necessary to turn on the support for
 // multithreading in the Xlib in order to correctly use the Halcon graphics.
 #include <X11/Xlib.h>
@@ -33,7 +35,13 @@
 
 #include <tf/transform_datatypes.h>
 
+
 #include <vector>
+//------------------------------------------------------------------------------FIXME
+#include <fstream>
+using namespace std;
+ofstream myfile;
+//------------------------------------------------------------------------------FIXME
 
 using namespace HalconCpp;
 
@@ -50,12 +58,12 @@ class ImageConverter
     std::string bar_model;                  // .shm file from Param. Server
     HTuple internal_param;                  // .cal file from Param. Server
     HTuple external_param;                  // Pose file from Param. Server
-    int id;                                 //-----------------------------------FIXME
     std::vector<std::vector<double>> barcodes_vector;
+    std::vector<std::string> bar_code_vector;
     
   public:
     // Constructor
-    ImageConverter(std::string, HTuple, HTuple, std::vector<std::vector<double>>);
+    ImageConverter(std::string, HTuple, HTuple, std::vector<std::vector<double>>, std::vector<std::string>);
 
     // Destructor
     ~ImageConverter();
@@ -73,15 +81,14 @@ class ImageConverter
 // Constructor is initialized with the 3 parameters in the Param. Server 
 ImageConverter::ImageConverter(std::string _bar_model,
   HTuple _internal_param, HTuple _external_param,
-  std::vector<std::vector<double>> _barcodes_vector) : it_(nh_)
+  std::vector<std::vector<double>> _barcodes_vector, std::vector<std::string> _bar_code_vector) : it_(nh_)
 {
   // Initialize class members
   bar_model = _bar_model;
   internal_param = _internal_param;
   external_param = _external_param;
   barcodes_vector = _barcodes_vector;
-
-  id = 0;
+  bar_code_vector = _bar_code_vector;
 
   // Subscribe to images using "image_transport"
   //image_sub_ = it_.subscribe("barcode/image", 1,
@@ -165,7 +172,7 @@ try
   GetImageSize(*halcon_image, &hv_image_width, &hv_image_height);
   
   // Adjust image contrast
-  scaleImageRange(*halcon_image, &ho_scaled_image, 0, 200); 
+  scaleImageRange(*halcon_image, &ho_scaled_image, 10, 220); 
 
   // Read "Bar model" from parameter in Param. Server
   hv_bar_model = bar_model.c_str();
@@ -232,7 +239,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
   std_msgs::String msg;                                  // Message to publish 
   HTuple grayvalue(255.0, 255.0);
 
-  
+  try{
     // Modify the pose of the WCS, rotation based on homogenous transformation matrices
     PoseToHomMat3d(external_param, &hv_cam_H_wcs);
     HomMat3dRotateLocal(hv_cam_H_wcs, HTuple(180).TupleRad(), "x", &hv_cam_H_wcs);
@@ -263,16 +270,16 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     marker.action = visualization_msgs::Marker::ADD;
     marker.header.frame_id = "/camera_link";
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker.scale.x = 0.17;
+    marker.scale.x = 0.022;
     marker.scale.y = 0.001;
-    marker.scale.z = 0.045;
+    marker.scale.z = 0.0095;
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 1.0f;
     marker.color.g = 0.0f;
     marker.color.b = 1.0f;
     marker.color.a = 1.0;
   
-try{
+
     // Find pose of each barcode
     for (int i = 0; i < number_barcodes; i++)
     {      
@@ -375,12 +382,19 @@ try{
       hv_control_point_column.Append(HTuple(hv_region_column1[0]));
       hv_control_point_column.Append(HTuple(hv_region_column2[hv_number_of_regions-1]));
 
-
+try{ 
       // Determine pose and homogeneous matrix of the barcode
       VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
                    hv_control_point_row, hv_control_point_column, internal_param,
-                   "analytic", "error", &hv_pose_barcode, &hv_pose_errors);
+                   "iterative", "error", &hv_pose_barcode, &hv_pose_errors);
+  }//try
+ catch (HException &except) {
+    std::cout << "Exception while running matrix" << std::endl;
+    std::cout << except.ErrorMessage() << std::endl;
+  }
       PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
+
+
 
       // Create quaternion from roll/pitch/yaw (in radians)
       tf::Quaternion q = tf::createQuaternionFromRPY((hv_pose_barcode[3].D()*3.1416/180),
@@ -423,62 +437,73 @@ try{
 
       // Set marker parameters
       marker.header.stamp = halcon_ptr->header.stamp;
-      marker.id = barcodes_vector.size();
 
       // Fill a "row" vector with the barcode information
-      std::vector<double> row(8);
-      row[0] = std::stod(hv_decoded_data[i].S().Text());
-      row[1] = hv_pose_barcode[0];
-      row[2] = hv_pose_barcode[1];
-      row[3] = hv_pose_barcode[2];
-      row[4] = q[0];
-      row[5] = q[1];
-      row[6] = q[2];
-      row[7] = q[3];
+      std::string bar_code = hv_decoded_data[i].S().Text();
+      std::vector<double> row(7);
+      row[0] = hv_pose_barcode[0];
+      row[1] = hv_pose_barcode[1];
+      row[2] = hv_pose_barcode[2];
+      row[3] = q[0];
+      row[4] = q[1];
+      row[5] = q[2];
+      row[6] = q[3];
+
 
       // Check if the barcode has already been detected
       int b = 0;
-      for(int a = 0; a < barcodes_vector.size(); a++)
+      for(int a = 0; a < bar_code_vector.size(); a++)
       {
-        if (barcodes_vector[a][0] == row[0])
+        if (bar_code_vector[a] == bar_code)
         {
+          myfile << "up" << " ";
           b = 1;
-          // Update barcode with the average
-          barcodes_vector[a][1] = (barcodes_vector[a][1] + row[1])/2;
-          barcodes_vector[a][2] = (barcodes_vector[a][2] + row[2])/2;
-          barcodes_vector[a][3] = (barcodes_vector[a][3] + row[3])/2;
-          barcodes_vector[a][4] = (barcodes_vector[a][4] + row[4])/2;
-          barcodes_vector[a][5] = (barcodes_vector[a][5] + row[5])/2;
-          barcodes_vector[a][6] = (barcodes_vector[a][6] + row[6])/2;
-          barcodes_vector[a][7] = (barcodes_vector[a][7] + row[7])/2;
-
-          marker.pose.position.x = barcodes_vector[a][1];
-          marker.pose.position.y = barcodes_vector[a][3];
-          marker.pose.position.z = barcodes_vector[a][2];
-          marker.pose.orientation.x = barcodes_vector[a][4];
-          marker.pose.orientation.y = barcodes_vector[a][5];
-          marker.pose.orientation.z = barcodes_vector[a][6];
-          marker.pose.orientation.w = barcodes_vector[a][7];
-  
-          // Publish marker
-          marker_pub.publish(marker);
+          // Update barcode   
+          marker.id = a + 1;
         }
       }
       if(b==0)
       {
+        myfile << "no" << " ";
         barcodes_vector.push_back(row);
+        bar_code_vector.push_back(bar_code);
 
-        marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][1];
-        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][3];
-        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][2];
-        marker.pose.orientation.x = barcodes_vector[barcodes_vector.size() - 1][4];
-        marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][5];
-        marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][6];
-        marker.pose.orientation.w = barcodes_vector[barcodes_vector.size() - 1][7];
+        marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
+        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][2];
+        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][1];
+        marker.pose.orientation.x = barcodes_vector[barcodes_vector.size() - 1][3];
+        marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][4];
+        marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][5];
+        marker.pose.orientation.w = barcodes_vector[barcodes_vector.size() - 1][6];
  
         // Publish marker
+        marker.id = barcodes_vector.size();
         marker_pub.publish(marker);
+        
+        tf::TransformListener listener;
+        tf::StampedTransform transform;
+       try{
+         listener.lookupTransform("/base_link", "/camera_link",  
+                               ros::Time(0), transform);
+          }
+       catch (tf::TransformException ex){
+        ROS_ERROR("%s",ex.what());
+        ros::Duration(1.0).sleep();
+        }
+
       }
+
+myfile << marker.id << " ";
+myfile << bar_code << " ";
+myfile << row[0] << " ";
+myfile << row[1] << " ";
+myfile << row[2] << " ";
+myfile << row[3] << " ";
+myfile << row[4] << " ";
+myfile << row[5] << " ";
+myfile << row[6] << "\n";
+
+  
     }//for
 
  }//try
@@ -607,11 +632,15 @@ void ImageConverter::scaleImageRange (HObject ho_Image, HObject *ho_ImageScaled,
 
 int main(int argc, char **argv)
 {
+
+myfile.open ("/home/azucena/barcode/example.txt");
+
   int init_threads;
   std::string par_bar_model, par_internal_param, par_external_param;
   HTuple hv_internal_param, hv_external_param;               // Camera parameters
   HTuple hv_internal_param_file, hv_external_param_file;     // Camera parameters files
   std::vector<std::vector<double>> barcodes_vector;
+  std::vector<std::string> bar_code_vector;
   
   // When working under UNIX/Linux it is necessary to turn on the support for
   // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -649,8 +678,7 @@ int main(int argc, char **argv)
         hv_external_param_file = par_external_param.c_str();
         ReadPose(hv_external_param_file, &hv_external_param);
  
-        //ImageConverter ic(par_bar_model, par_internal_param, par_external_param);
-        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param, barcodes_vector);
+        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param, barcodes_vector, bar_code_vector);
         ros::spin();   
     }
   }
@@ -658,6 +686,6 @@ int main(int argc, char **argv)
   {
     ROS_ERROR("XInitThreads() initialization was not successful.");
   }
-
+myfile.close();
   return 0;
 }

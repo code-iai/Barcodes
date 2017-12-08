@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   sensor_msgs
   refills_msgs
+  tf
 )
 
 find_package( OpenCV REQUIRED )

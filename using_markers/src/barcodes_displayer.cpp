@@ -36,12 +36,15 @@ int main( int argc, char** argv )
     marker.action = visualization_msgs::Marker::ADD;
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker.scale.x = 0.017;
+    //marker.scale.x = 0.017;
+    //marker.scale.y = 0.0001;
+    //marker.scale.z = 0.0045;
+    marker.scale.x = 0.022;
     marker.scale.y = 0.0001;
-    marker.scale.z = 0.0045;
+    marker.scale.z = 0.0095;
 
     // Set the color -- be sure to set alpha to something non-zero!
-    marker.color.r = 1.0f;
+    marker.color.r = 0.0f;
     marker.color.g = 0.0f;
     marker.color.b = 1.0f;
     marker.color.a = 1.0;
@@ -56,7 +59,7 @@ int main( int argc, char** argv )
         marker.id = id;
 
         marker.pose.position.x = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["x"].get<float>();
-        marker.pose.position.y = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["y"].get<float>();
+        marker.pose.position.y = -(j_array["shelf"][i]["barcode"][j]["pose"]["position"]["y"].get<float>());
         marker.pose.position.z = j_array["shelf"][i]["barcode"][j]["pose"]["position"]["z"].get<float>();
         marker.pose.orientation.x = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["x"].get<float>();
         marker.pose.orientation.y = j_array["shelf"][i]["barcode"][j]["pose"]["orientation"]["y"].get<float>();

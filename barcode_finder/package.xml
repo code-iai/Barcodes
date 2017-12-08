@@ -43,7 +43,9 @@
   <depend>message_generation</depend>
   <depend>refills_msgs</depend>
   <depend>message_runtime</depend>
+  <depend>tf</depend>
   <buildtool_depend>catkin</buildtool_depend>
+
 
 
   <!-- The export tag contains other, unspecified, tags -->
