@@ -168,6 +168,7 @@ link_directories($ENV{HALCONROOT}/lib/$ENV{HALCONARCH})
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(image_converter src/image_converter.cpp)
 add_executable(image_publisher src/image_publisher.cpp)
+add_executable(tf_listener src/tf_listener.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -199,7 +200,13 @@ target_link_libraries(image_publisher
    X11
 )
 
-
+target_link_libraries(tf_listener
+   halconcpp
+   halcon
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+   X11
+)
 
 #############
 ## Install ##

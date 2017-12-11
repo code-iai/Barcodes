@@ -16,6 +16,7 @@
 #include "HalconCpp.h"
 
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 
 // When working under UNIX/Linux it is necessary to turn on the support for
 // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -386,7 +387,7 @@ try{
       // Determine pose and homogeneous matrix of the barcode
       VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
                    hv_control_point_row, hv_control_point_column, internal_param,
-                   "iterative", "error", &hv_pose_barcode, &hv_pose_errors);
+                   "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
   }//try
  catch (HException &except) {
     std::cout << "Exception while running matrix" << std::endl;
@@ -454,11 +455,12 @@ try{
       int b = 0;
       for(int a = 0; a < bar_code_vector.size(); a++)
       {
-        if (bar_code_vector[a] == bar_code)
+      if (bar_code_vector[a] == bar_code)
         {
           myfile << "up" << " ";
           b = 1;
           // Update barcode   
+
           marker.id = a + 1;
         }
       }
@@ -469,8 +471,8 @@ try{
         bar_code_vector.push_back(bar_code);
 
         marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
-        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][2];
-        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][1];
+        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][1];
+        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][2];
         marker.pose.orientation.x = barcodes_vector[barcodes_vector.size() - 1][3];
         marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][4];
         marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][5];
@@ -479,17 +481,14 @@ try{
         // Publish marker
         marker.id = barcodes_vector.size();
         marker_pub.publish(marker);
-        
-        tf::TransformListener listener;
-        tf::StampedTransform transform;
-       try{
-         listener.lookupTransform("/base_link", "/camera_link",  
-                               ros::Time(0), transform);
-          }
-       catch (tf::TransformException ex){
-        ROS_ERROR("%s",ex.what());
-        ros::Duration(1.0).sleep();
-        }
+
+
+        // Create a tf broadcaster for the detected barcode
+        static tf::TransformBroadcaster br;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(marker.pose.position.x, marker.pose.position.y, marker.pose.position.z) );
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "new"));
 
       }
 
