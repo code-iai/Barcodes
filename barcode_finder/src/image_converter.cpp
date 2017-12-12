@@ -222,9 +222,6 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
   HTuple hv_region_width, hv_region_height;              // Barcode properties
   HTuple hv_control_point_X, hv_control_point_Y;         // Real barcode coordinates
   HTuple hv_control_point_Z;                             // Real barcode coordinates
-  HTuple hv_barcode_height;                              // Proportional height
-  HTuple hv_image_point_up, hv_image_point_down;         // Image barcode coordinates
-  HTuple hv_image_point_left, hv_image_point_right;      // Image barcode coordinates
   HTuple hv_control_point_row, hv_control_point_column;  // Image barcode coordinates
   HTuple hv_pose_barcode, hv_pose_errors;                // Barcode pose
   HTuple hv_barcode, hv_barcode_label;                   // Barcode labels
@@ -283,33 +280,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
 
     // Find pose of each barcode
     for (int i = 0; i < number_barcodes; i++)
-    {      
-
-// Old method--------------------------------------------------------------------------------------------
-      // Determine the image barcode/rectangle-corners coordinates in pixels.
-      // Variable hv_barcode_height represents the proportional height
-      // of the real barcode rectangle.
-      hv_barcode_height = hv_region_width / 3.5;
-      hv_image_point_up = hv_region_center_row - (hv_barcode_height / 2);
-      hv_image_point_down = hv_region_center_row + (hv_barcode_height / 2);
-      hv_image_point_left = hv_region_center_column - (hv_region_width / 2);
-      hv_image_point_right = hv_region_center_column + (hv_region_width / 2);
-
-      // Create two tuples with the values of the
-      // image barcode/rectangle-corners coordinates in pixels
-      HTuple hv_control_point_row_old, hv_control_point_column_old;  // Image barcode coordinates
-      hv_control_point_row_old.Clear();
-      hv_control_point_row_old.Append(HTuple(hv_image_point_up[i]));
-      hv_control_point_row_old.Append(HTuple(hv_image_point_up[i]));
-      hv_control_point_row_old.Append(HTuple(hv_image_point_down[i]));
-      hv_control_point_row_old.Append(HTuple(hv_image_point_down[i]));
-
-      hv_control_point_column_old.Clear();
-      hv_control_point_column_old.Append(HTuple(hv_image_point_left[i]));
-      hv_control_point_column_old.Append(HTuple(hv_image_point_right[i]));
-      hv_control_point_column_old.Append(HTuple(hv_image_point_left[i]));
-      hv_control_point_column_old.Append(HTuple(hv_image_point_right[i]));
-// End Old method--------------------------------------------------------------------------------------------
+    {
 
       // Find the corners of the barcode
 
