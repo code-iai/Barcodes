@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include "std_msgs/String.h"
+#include <vector>
 
 // Includes everything to publish and subscribe to images
 #include <image_transport/image_transport.h> 
@@ -14,9 +15,6 @@
 //Halcon libraries 
 #include <halcon_image.h>
 #include "HalconCpp.h"
-
-#include <tf/transform_listener.h>
-#include <tf/transform_broadcaster.h>
 
 // When working under UNIX/Linux it is necessary to turn on the support for
 // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -35,14 +33,13 @@
 #include <visualization_msgs/Marker.h>
 
 #include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
 
-
-#include <vector>
-//------------------------------------------------------------------------------FIXME
-#include <fstream>
+#include <fstream> //----------------------------------------------------------------- FIXME
 using namespace std;
 ofstream myfile;
-//------------------------------------------------------------------------------FIXME
+//----------------------------------------------------------------- FIXME
+
 
 using namespace HalconCpp;
 
@@ -268,21 +265,19 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     marker.action = visualization_msgs::Marker::ADD;
     marker.header.frame_id = "/camera_link";
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker.scale.x = 0.022;
-    marker.scale.y = 0.001;
-    marker.scale.z = 0.0095;
+    marker.scale.x = 0.032;
+    marker.scale.y = 0.011;
+    marker.scale.z = 0.0195;
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 1.0f;
     marker.color.g = 0.0f;
     marker.color.b = 1.0f;
     marker.color.a = 1.0;
   
-
     // Find pose of each barcode
     for (int i = 0; i < number_barcodes; i++)
     {
-
-      // Find the corners of the barcode
+    // Find the corners of the barcode
 
       // Local iconic variables
       HObject  ho_region_of_interest;
@@ -354,38 +349,37 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       hv_control_point_column.Append(HTuple(hv_region_column1[0]));
       hv_control_point_column.Append(HTuple(hv_region_column2[hv_number_of_regions-1]));
 
-try{ 
+try{
       // Determine pose and homogeneous matrix of the barcode
       VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
                    hv_control_point_row, hv_control_point_column, internal_param,
                    "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
-  }//try
+  }
  catch (HException &except) {
-    std::cout << "Exception while running matrix" << std::endl;
+    std::cout << "Exception while converting VectorToPose" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
   }
       PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
 
 
-
-      // Create quaternion from roll/pitch/yaw (in radians)
+      // Create quaternion from roll/pitch/yaw
       tf::Quaternion q = tf::createQuaternionFromRPY((hv_pose_barcode[3].D()*3.1416/180),
         (hv_pose_barcode[4]*3.1416/180), (hv_pose_barcode[5]*3.1416/180));
 
-      // Convert Barcode Pose to string
+      // Convert Barcode Pose to string to publish it
       hv_barcode = ("BARCODE " + (i + 1));
-      TupleString(hv_pose_barcode[0] * 100, ".3f", &hv_x_trans);
-      TupleString(hv_pose_barcode[1] * 100, ".3f", &hv_y_trans);
-      TupleString(hv_pose_barcode[2] * 100, ".3f", &hv_z_trans);
+      TupleString(hv_pose_barcode[0], ".3f", &hv_x_trans);
+      TupleString(hv_pose_barcode[1], ".3f", &hv_y_trans);
+      TupleString(hv_pose_barcode[2], ".3f", &hv_z_trans);
       TupleString(hv_pose_barcode[3], ".3f", &hv_x_rot);
       TupleString(hv_pose_barcode[4], ".3f", &hv_y_rot);
       TupleString(hv_pose_barcode[5], ".3f", &hv_z_rot);
       barcode_info = hv_barcode.S().Text() + std::string(": ") +
                      hv_decoded_data[i].S().Text() +
                      std::string(" POSE: x: ") + hv_x_trans.S().Text() +
-                     std::string(" cm, y: ") + hv_y_trans.S().Text() +
-                     std::string(" cm, z: ") + hv_z_trans.S().Text() +
-                     std::string(" cm, X: ") + hv_x_rot.S().Text() +
+                     std::string(" m, y: ") + hv_y_trans.S().Text() +
+                     std::string(" m, z: ") + hv_z_trans.S().Text() +
+                     std::string(" m, X: ") + hv_x_rot.S().Text() +
                      std::string("°, Y: ") + hv_y_rot.S().Text() +
                      std::string("°, Z: ") + hv_z_rot.S().Text() + std::string("°");
 
@@ -407,6 +401,7 @@ try{
       barcode_msg.barcode_pose.pose.orientation.w = q[3];
       barcode_pose_pub.publish(barcode_msg);
 
+
       // Set marker parameters
       marker.header.stamp = halcon_ptr->header.stamp;
 
@@ -421,25 +416,20 @@ try{
       row[5] = q[2];
       row[6] = q[3];
 
-
       // Check if the barcode has already been detected
       int b = 0;
       for(int a = 0; a < bar_code_vector.size(); a++)
       {
       if (bar_code_vector[a] == bar_code)
         {
-          myfile << "up" << " ";
           b = 1;
-          // Update barcode   
-
-          marker.id = a + 1;
         }
       }
       if(b==0)
       {
-        myfile << "no" << " ";
         barcodes_vector.push_back(row);
         bar_code_vector.push_back(bar_code);
+        std::cout << bar_code << std::endl;
 
         marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
         marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][1];
@@ -448,32 +438,23 @@ try{
         marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][4];
         marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][5];
         marker.pose.orientation.w = barcodes_vector[barcodes_vector.size() - 1][6];
- 
-        // Publish marker
-        marker.id = barcodes_vector.size();
-        marker_pub.publish(marker);
-
 
         // Create a tf broadcaster for the detected barcode
         static tf::TransformBroadcaster br;
-        tf::Transform transform;
+        tf::StampedTransform transform;
         transform.setOrigin( tf::Vector3(marker.pose.position.x, marker.pose.position.y, marker.pose.position.z) );
         transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "new"));
+        transform.stamp_ = halcon_ptr->header.stamp;
+        br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "barcode")); 
+
+        // Publish marker
+        marker.id = barcodes_vector.size();
+        marker_pub.publish(marker);
+        
+        myfile << halcon_ptr->header.stamp << " ";
+        myfile << bar_code << "\n";
 
       }
-
-myfile << marker.id << " ";
-myfile << bar_code << " ";
-myfile << row[0] << " ";
-myfile << row[1] << " ";
-myfile << row[2] << " ";
-myfile << row[3] << " ";
-myfile << row[4] << " ";
-myfile << row[5] << " ";
-myfile << row[6] << "\n";
-
-  
     }//for
 
  }//try
@@ -603,7 +584,7 @@ void ImageConverter::scaleImageRange (HObject ho_Image, HObject *ho_ImageScaled,
 int main(int argc, char **argv)
 {
 
-myfile.open ("/home/azucena/barcode/example.txt");
+myfile.open ("/home/azucena/barcode/converter.txt");
 
   int init_threads;
   std::string par_bar_model, par_internal_param, par_external_param;

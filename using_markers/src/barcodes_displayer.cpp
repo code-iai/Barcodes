@@ -39,9 +39,9 @@ int main( int argc, char** argv )
     //marker.scale.x = 0.017;
     //marker.scale.y = 0.0001;
     //marker.scale.z = 0.0045;
-    marker.scale.x = 0.022;
-    marker.scale.y = 0.0001;
-    marker.scale.z = 0.0095;
+    marker.scale.x = 0.032;
+    marker.scale.y = 0.011;
+    marker.scale.z = 0.0195;
 
     // Set the color -- be sure to set alpha to something non-zero!
     marker.color.r = 0.0f;
