@@ -33,9 +33,9 @@ int main(int argc, char** argv){
       stamp_time = transform.stamp_;
   
       myfile << stamp_time << " ";
-      myfile << transform.getOrigin().x() *100 << " ";
-      myfile << transform.getOrigin().y() *100 << " ";
-      myfile << transform.getOrigin().z() *100 << "\n";
+      myfile << transform.getOrigin().x()  << " ";
+      myfile << transform.getOrigin().y()  << " ";
+      myfile << transform.getOrigin().z()  << "\n";
 
     }
     catch (tf::TransformException ex){
