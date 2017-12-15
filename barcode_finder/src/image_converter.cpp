@@ -1,7 +1,7 @@
 // This node listens to the ROS image message topic "barcode/image",
 // converts the sensor_msgs::Image to a HalconCpp::HImage and processes it.
-// The node reads from file a "Bar model" which was created in order to
-// identify the bar where the labels are located.
+// The node reads from file a "Shelf model" which was created in order to
+// identify the shelf where the labels are located.
 // The node finds the barcodes and publishes the number and 
 // location on the "/barcode/data" topic.
 
@@ -88,15 +88,15 @@ ImageConverter::ImageConverter(std::string _bar_model,
   barcodes_vector = _barcodes_vector;
   bar_code_vector = _bar_code_vector;
 
-  // Subscribe to images using "image_transport"
-  //image_sub_ = it_.subscribe("barcode/image", 1,
-    //&ImageConverter::imageCallback, this);
-  image_sub_ = it_.subscribe("/refills_wrist_camera/image_mono", 1,
+  // Subscribe to and publish images using "image_transport"
+  image_sub_ = it_.subscribe("/refills_wrist_camera/image_mono", 1,  // This topic is named "/barcode/image" in the report
     &ImageConverter::imageCallback, this);
-  image_pub_ = it_.advertise("/image_converter/output_video", 5);
-  // Advertise string data will be published
+  image_pub_ = it_.advertise("/barcode/output_images", 5);
+  // Publish barcode informarmation as string data
   data_pub = nh_.advertise<std_msgs::String>("barcode/data", 1);
+  // Publish barcode information using the refills message
   barcode_pose_pub = nh_.advertise<refills_msgs::Barcode>("barcode/pose", 5);
+  //Publish markers in rviz
   marker_pub = nh_.advertise<visualization_msgs::Marker>("barcode/marker", 1);
 }
 
@@ -111,7 +111,7 @@ ImageConverter::~ImageConverter()
 void ImageConverter::imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
     
-//cambiar-----------------------------------------------------------------------------------
+//Change image format to BGR8 before working with halcon bridge library-----------------//FIXME
 cv_bridge::CvImagePtr cv_ptr;
     try
     {
@@ -122,7 +122,6 @@ cv_bridge::CvImagePtr cv_ptr;
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-
 //------------------------------------------------------------------------------------
 
 
@@ -148,8 +147,8 @@ void ImageConverter::converter(halcon_bridge::HalconImagePtr halcon_ptr)
   HObject  ho_gray_image;         // Grayscaled and contrast-adjusted images
   HObject  ho_ROI;                // ROI according to "Bar model"
 
-  HImage *halcon_image;                             // Halcon image to process  
-  HImage ho_reduced_image, ho_scaled_image;
+  HImage *halcon_image;                                    // Halcon image to process  
+  HImage ho_reduced_image, ho_scaled_image;                
   
   // Halcon local control variables
   HTuple  hv_image_width, hv_image_height;                 // Image width and height  
@@ -170,14 +169,14 @@ try
   GetImageSize(*halcon_image, &hv_image_width, &hv_image_height);
   
   // Adjust image contrast
-  scaleImageRange(*halcon_image, &ho_scaled_image, 10, 220); 
+  scaleImageRange(*halcon_image, &ho_scaled_image, 10, 250); 
 
-  // Read "Bar model" from parameter in Param. Server
+  // Read "Shelf model" from parameter in Param. Server
   hv_bar_model = bar_model.c_str();
   ReadShapeModel(hv_bar_model, &hv_model_ID);
-  // hv_model_height is the height of the "Bar model" in pixels (180)
+  // hv_model_height is the height of the "Shelf model" in pixels (180)
   hv_model_height = 180;
-  // Find "Bar model" in image
+  // Find "Shelf model" in image
   FindScaledShapeModel(ho_scaled_image, hv_model_ID, -0.2, 0.39, 0.6, 1.4, 0.8,
     1, 0, "interpolation", 0, 0.8, &hv_row_center_model, &hv_column_center_model,
     &hv_angle_model, &hv_scale_model, &hv_score_model);
@@ -187,7 +186,7 @@ catch (HException &except) {
     std::cout << except.ErrorMessage() << std::endl;
   }
 
-  // If "Bar model" was found: search for the barcodes only in the ROI
+  // If "Shelf model" was found: search for the barcodes only in the ROI
   if (hv_score_model > 0)
   {
     // Generate a ROI according to the found model
@@ -211,8 +210,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
 
   // Halcon local control variables
   HTuple hv_window_handle;                               // Window to display image
-  HTuple hv_pose_WCS;                                    // Pose of WCS
-  HTuple hv_cam_H_wcs, hv_wcs_H_cam, hv_cam_H_obj;       // Homogeneous matrices
+  HTuple hv_cam_H_obj;                                   // Homogeneous matrices
   HTuple hv_decoded_data;                                // Barcode number
   HTuple hv_region_area, hv_region_center_row;           // Barcode properties
   HTuple hv_region_center_column;                        // Barcode properties
@@ -235,11 +233,6 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
   HTuple grayvalue(255.0, 255.0);
 
   try{
-    // Modify the pose of the WCS, rotation based on homogenous transformation matrices
-    PoseToHomMat3d(external_param, &hv_cam_H_wcs);
-    HomMat3dRotateLocal(hv_cam_H_wcs, HTuple(180).TupleRad(), "x", &hv_cam_H_wcs);
-    HomMat3dToPose(hv_cam_H_wcs, &hv_pose_WCS);
-  //  HomMat3dInvert(hv_cam_H_wcs, &hv_wcs_H_cam);
 
     // Find barcode and get its properties
     hv_barcode_handle.CreateBarCodeModel(HTuple(), HTuple());
@@ -352,17 +345,19 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
 try{
       // Determine pose and homogeneous matrix of the barcode
       VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
-                   hv_control_point_row, hv_control_point_column, internal_param,
-                   "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
+        hv_control_point_row, hv_control_point_column, internal_param,
+        "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
+      // Rotate pose_barcode in order to match "shelf frame"
+      PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
+      HomMat3dRotateLocal(hv_cam_H_obj, HTuple(270).TupleRad(), "x", &hv_cam_H_obj);
+      HomMat3dToPose(hv_cam_H_obj, &hv_pose_barcode);
   }
  catch (HException &except) {
     std::cout << "Exception while converting VectorToPose" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
   }
-      PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
 
-
-      // Create quaternion from roll/pitch/yaw
+      // Create quaternion from roll/pitch/yaw (from barcode pose)
       tf::Quaternion q = tf::createQuaternionFromRPY((hv_pose_barcode[3].D()*3.1416/180),
         (hv_pose_barcode[4]*3.1416/180), (hv_pose_barcode[5]*3.1416/180));
 

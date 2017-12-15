@@ -29,7 +29,7 @@ int main(int argc, char** argv){
     marker.type = visualization_msgs::Marker::CUBE;
     marker.lifetime = ros::Duration();
     marker.action = visualization_msgs::Marker::ADD;
-    marker.header.frame_id = "/my_frame";
+    marker.header.frame_id = "/shelf";
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
     marker.scale.x = 0.032;
     marker.scale.y = 0.011;
@@ -44,7 +44,7 @@ int main(int argc, char** argv){
   while (node.ok()){
     tf::StampedTransform transform;
     try{
-      listener.lookupTransform("/my_frame", "/barcode", ros::Time(0), transform);
+      listener.lookupTransform("/shelf", "/barcode", ros::Time(0), transform);
       stamp_time = transform.stamp_;
     }
     catch (tf::TransformException ex){
@@ -84,10 +84,10 @@ int main(int argc, char** argv){
         marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
         marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][1];
         marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][2];
-        marker.pose.orientation.x = barcodes_vector[barcodes_vector.size() - 1][3]; //0.0;//
-        marker.pose.orientation.y = barcodes_vector[barcodes_vector.size() - 1][4];
-        marker.pose.orientation.z = barcodes_vector[barcodes_vector.size() - 1][5];
-        marker.pose.orientation.w = barcodes_vector[barcodes_vector.size() - 1][6];
+        marker.pose.orientation.x = 0.0;//barcodes_vector[barcodes_vector.size() - 1][3]; //0.0;//
+        marker.pose.orientation.y = 0.0;//barcodes_vector[barcodes_vector.size() - 1][4];
+        marker.pose.orientation.z = 0.0;//barcodes_vector[barcodes_vector.size() - 1][5];
+        marker.pose.orientation.w = 0.1;//barcodes_vector[barcodes_vector.size() - 1][6];
         marker_pub.publish(marker);
 
 

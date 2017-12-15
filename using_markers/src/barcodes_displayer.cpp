@@ -26,7 +26,7 @@ int main( int argc, char** argv )
     visualization_msgs::Marker marker;
     
     // Set marker parameters
-    marker.header.frame_id = "/my_frame";
+    marker.header.frame_id = "/shelf";
     marker.header.stamp = ros::Time::now();
     marker.ns = "barcodes_displayer";
     marker.type = visualization_msgs::Marker::CUBE;
