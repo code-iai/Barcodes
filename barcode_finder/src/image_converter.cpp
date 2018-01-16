@@ -71,7 +71,7 @@ class ImageConverter
   
     // Functions    
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-    void converter(halcon_bridge::HalconImagePtr halcon_ptr);
+    void shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr);
     void barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr);
 
     // Functions exported from Halcon
@@ -113,39 +113,24 @@ ImageConverter::~ImageConverter()
 // This function receives the published image and processes it
 void ImageConverter::imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-    
-//Change image format to BGR8 before working with halcon bridge library-------------//FIXME
-cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-//------------------------------------------------------------------------------------
-
-
-  // Convert the ROS image message to a Halcon image
+  // Convert ROS image messages to Halcon images
   halcon_bridge::HalconImagePtr halcon_pointer;
   try
   {
-    halcon_pointer = halcon_bridge::toHalconCopy(cv_ptr->toImageMsg());
-    //halcon_pointer = halcon_bridge::toHalconCopy(msg);
+    //halcon_pointer = halcon_bridge::toHalconCopy(cv_ptr->toImageMsg());
+    halcon_pointer = halcon_bridge::toHalconCopy(msg);
   }
   catch (halcon_bridge::Exception& e)
   {
     ROS_ERROR("halcon_bridge exception: %s", e.what());
     return;
   }
-  converter(halcon_pointer);
+  shelfFinder(halcon_pointer);
 }
 
 
-void ImageConverter::converter(halcon_bridge::HalconImagePtr halcon_ptr)
-{ 
+void ImageConverter::shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr)
+{
   // Halcon local iconic variables
   HObject  ho_gray_image;         // Grayscaled and contrast-adjusted images
   HObject  ho_ROI;                // ROI according to "Bar model"
