@@ -110,7 +110,7 @@ ImageConverter::~ImageConverter()
 }
 
 
-// This function receives the published image and processes it
+// This function receives the published image and converts it to Halcon image
 void ImageConverter::imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
   // Convert ROS image messages to Halcon images
@@ -128,7 +128,7 @@ void ImageConverter::imageCallback(const sensor_msgs::ImageConstPtr& msg)
   shelfFinder(halcon_pointer);
 }
 
-
+// THis function finds the Shelf Model
 void ImageConverter::shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr)
 {
   // Halcon local iconic variables
@@ -151,6 +151,9 @@ try
   // will be clipped to the currently used image size or not.
   GetSystem("clip_region", &hv_ClipRegion);
   SetSystem("clip_region", "false");
+
+std::cout << " ---- New Image: " << halcon_ptr->header.stamp << std::endl;
+myfile << "Image: " << halcon_ptr->header.stamp << " ";
 
   // Process halcon_ptr->image using Halcon Software
   halcon_image = halcon_ptr->image; 
@@ -237,7 +240,6 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     hv_control_point_X = (((HTuple(1.5).Append(19)).Append(1.5)).Append(19)) / 1000.0;
     hv_control_point_Y = (((HTuple(6).Append(6)).Append(1)).Append(1)) / 1000.0;
     hv_control_point_Z = (((HTuple(0).Append(0)).Append(0)).Append(0));
-   
 
     // Create a barcode-marker to display it in rviz
     visualization_msgs::Marker marker;
@@ -374,7 +376,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       msg.data = barcode_info;
       data_pub.publish(msg);
  
-      // Filling the refills message
+      // Fill and publish the refills message
       refills_msgs::Barcode barcode_msg;
       barcode_msg.barcode = hv_decoded_data[i].S().Text();
       barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
@@ -406,12 +408,12 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       transform.setOrigin( tf::Vector3(marker.pose.position.x, marker.pose.position.y, marker.pose.position.z) );
       transform.setRotation(q);
       transform.stamp_ = halcon_ptr->header.stamp;
-      br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "barcode")); 
-
-      //Write results to my file to analyze data
+      br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "b"+barcode_msg.barcode)); 
+/*
+      //Write results to "my file" to analyze data
       myfile << halcon_ptr->header.stamp << " ";
       myfile << hv_decoded_data[i].S() << "\n"; 
-
+*/
       // Fill a "row" vector with the barcode information
       std::string bar_code = hv_decoded_data[i].S().Text();
       std::vector<double> row(7);
@@ -436,7 +438,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       {
         barcodes_vector.push_back(row);
         bar_code_vector.push_back(bar_code);
-        std::cout << bar_code << std::endl;
+        //std::cout << bar_code << std::endl;
 
 /*
         marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
@@ -461,6 +463,8 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
         marker_pub.publish(marker);
 */       
       }
+    std::cout << "*" << barcode_msg.barcode_pose.header.stamp << "  " << barcode_msg.barcode << std::endl;
+    myfile << barcode_msg.barcode << " ";
     }//for
   }//try
   catch (HException &except)
@@ -490,6 +494,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     std::cout << "Exception while running FindBarCode2" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
   }
+  myfile << "\n";
 }
 
 
