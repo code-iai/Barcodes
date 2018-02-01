@@ -35,11 +35,9 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 
-#include <fstream> //-------------------------------------------
-using namespace std;
-ofstream myfile;
-//--------------------------------------------------------------
-
+#include <fstream> 
+// data_file used for the evaluation of the system
+std::ofstream data_file;  
 
 using namespace HalconCpp;
 
@@ -56,8 +54,7 @@ class ImageConverter
     std::string bar_model;                  // .shm file from Param. Server
     HTuple internal_param;                  // .cal file from Param. Server
     HTuple external_param;                  // Pose file from Param. Server
-
-    int id;
+    int id;                                 // Marker id
     
   public:
     // Constructor
@@ -69,7 +66,8 @@ class ImageConverter
     // Functions    
     void imageCallback(const sensor_msgs::ImageConstPtr& msg);
     void shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr);
-    void barcodeFinder(HImage image_to_process, HTuple image_width, HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr);
+    void barcodeFinder(HImage image_to_process, HTuple image_width,
+         HTuple image_height, halcon_bridge::HalconImagePtr halcon_ptr);
 
     // Functions exported from Halcon
     void scaleImageRange (HObject ho_Image, HObject *ho_ImageScaled,
@@ -127,49 +125,49 @@ void ImageConverter::shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr)
 {
   // Halcon local iconic variables
   HObject  ho_gray_image;         // Grayscaled and contrast-adjusted images
-  HObject  ho_ROI;                // ROI according to "Bar model"
+  HObject  ho_ROI;                         // ROI according to "Bar model"
 
-  HImage *halcon_image;                                    // Halcon image to process  
+  HImage *halcon_image;          // Halcon image to process  
   HImage ho_reduced_image, ho_scaled_image;                
   
   // Halcon local control variables
-  HTuple  hv_image_width, hv_image_height;                 // Image width and height  
-  HTuple  hv_ClipRegion;                                   // 'clip_region' property
-  HTuple  hv_bar_model, hv_model_ID, hv_model_height;      // Bar model properties
+  HTuple  hv_image_width, hv_image_height;                                 // Image width and height  
+  HTuple  hv_ClipRegion;                                                                           // 'clip_region' property
+  HTuple  hv_bar_model, hv_model_ID, hv_model_height;          // Bar model properties
   HTuple  hv_row_center_model, hv_column_center_model;     // Bar model properties
   HTuple  hv_angle_model, hv_scale_model, hv_score_model;  // Bar model properties
 
-try
-{
-  // 'clip_region' property determines whether the regions of iconic objects
-  // will be clipped to the currently used image size or not.
-  GetSystem("clip_region", &hv_ClipRegion);
-  SetSystem("clip_region", "false");
-
-  myfile << "Image: " << halcon_ptr->header.stamp << " ";
-
-  // Process halcon_ptr->image using Halcon Software
-  halcon_image = halcon_ptr->image; 
-  GetImageSize(*halcon_image, &hv_image_width, &hv_image_height);
-  
-  // Adjust image contrast
-  scaleImageRange(*halcon_image, &ho_scaled_image, 10, 180); 
-
-  // Read "Shelf model" from parameter in Param. Server
-  hv_bar_model = bar_model.c_str();
-  ReadShapeModel(hv_bar_model, &hv_model_ID);
-  // hv_model_height is the height of the "Shelf model" in pixels (180)
-  hv_model_height = 180;
-  // Find "Shelf model" in image
-  FindScaledShapeModel(ho_scaled_image, hv_model_ID, -0.2, 0.39, 0.6, 1.4, 0.8,
-    1, 0, "interpolation", 0, 0.8, &hv_row_center_model, &hv_column_center_model,
-    &hv_angle_model, &hv_scale_model, &hv_score_model);
-}
-catch (HException &except)
-{
-  std::cout << "Exception while running Callback" << std::endl;
-  std::cout << except.ErrorMessage() << std::endl;
-}
+  try
+  {
+    // 'clip_region' property determines whether the regions of iconic objects
+    // will be clipped to the currently used image size or not.
+    GetSystem("clip_region", &hv_ClipRegion);
+    SetSystem("clip_region", "false");
+     
+    data_file << "Image: " << halcon_ptr->header.stamp << " ";
+     
+    // Process halcon_ptr->image using Halcon Software
+    halcon_image = halcon_ptr->image; 
+    GetImageSize(*halcon_image, &hv_image_width, &hv_image_height);
+     
+    // Adjust image contrast
+    scaleImageRange(*halcon_image, &ho_scaled_image, 10, 180); 
+     
+    // Read "Shelf model" from parameter in Param. Server
+    hv_bar_model = bar_model.c_str();
+    ReadShapeModel(hv_bar_model, &hv_model_ID);
+    // hv_model_height is the height of the "Shelf model" in pixels (180)
+    hv_model_height = 180;
+    // Find "Shelf model" in image
+    FindScaledShapeModel(ho_scaled_image, hv_model_ID, -0.2, 0.39, 0.6, 1.4, 0.8,
+      1, 0, "interpolation", 0, 0.8, &hv_row_center_model, &hv_column_center_model,
+      &hv_angle_model, &hv_scale_model, &hv_score_model);
+  }
+  catch (HException &except)
+  {
+    std::cout << "Exception while running Callback" << std::endl;
+    std::cout << except.ErrorMessage() << std::endl;
+  }
 
   // If "Shelf model" was found: search for the barcodes only in the ROI
   if (hv_score_model > 0)
@@ -218,7 +216,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
   HTuple grayvalue(255.0, 255.0);
 
   try
-    {
+  {
     // Find barcode and get its properties
     hv_barcode_handle.CreateBarCodeModel(HTuple(), HTuple());
     ho_symbol_regions = image_to_process.FindBarCode(hv_barcode_handle, "EAN-8", &hv_decoded_data);
@@ -326,22 +324,14 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       hv_control_point_column.Append(HTuple(hv_region_column1[0]));
       hv_control_point_column.Append(HTuple(hv_region_column2[hv_number_of_regions-1]));
 
-      try
-      {
-        // Determine pose and homogeneous matrix of the barcode
-        VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
-          hv_control_point_row, hv_control_point_column, internal_param,
-          "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
-        // Rotate pose_barcode in order to match "shelf frame"
-        PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
-        HomMat3dRotateLocal(hv_cam_H_obj, HTuple(270).TupleRad(), "x", &hv_cam_H_obj);
-        HomMat3dToPose(hv_cam_H_obj, &hv_pose_barcode);
-      }
-      catch (HException &except)
-      {
-        std::cout << "Exception while converting VectorToPose" << std::endl;
-        std::cout << except.ErrorMessage() << std::endl;
-      }
+      // Determine pose and homogeneous matrix of the barcode
+      VectorToPose(hv_control_point_X, hv_control_point_Y, hv_control_point_Z,
+        hv_control_point_row, hv_control_point_column, internal_param,
+        "planar_analytic", "error", &hv_pose_barcode, &hv_pose_errors);
+      // Rotate pose_barcode in order to match "shelf frame"
+      PoseToHomMat3d(hv_pose_barcode, &hv_cam_H_obj);
+      HomMat3dRotateLocal(hv_cam_H_obj, HTuple(270).TupleRad(), "x", &hv_cam_H_obj);
+      HomMat3dToPose(hv_cam_H_obj, &hv_pose_barcode);
 
       // Create quaternion from roll/pitch/yaw (from barcode pose)
       tf::Quaternion q = tf::createQuaternionFromRPY((hv_pose_barcode[3].D()*3.1416/180),
@@ -403,15 +393,16 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       transform.stamp_ = halcon_ptr->header.stamp;
       br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "b"+barcode_msg.barcode)); 
 
-      myfile << barcode_msg.barcode << " ";
+      data_file << barcode_msg.barcode << " ";
     }//for
   }//try
   catch (HException &except)
   {
-    std::cout << "Exception while running FindBarCode" << std::endl;
+    std::cout << "Exception while running barcodeFinder" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
   }
-  try{
+  try
+  {
     // Publish image over ROS
     halcon_bridge::HalconImage *halcon_img_ptr(new halcon_bridge::HalconImage);
     halcon_img_ptr->header.frame_id = halcon_ptr->header.frame_id;
@@ -427,13 +418,13 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     }
     image_pub_.publish(halcon_img_ptr->toImageMsg());
 
-  }//try
+  }
   catch (HException &except)
   {
-    std::cout << "Exception while running FindBarCode2" << std::endl;
+    std::cout << "Exception while converting to Halcon Image" << std::endl;
     std::cout << except.ErrorMessage() << std::endl;
   }
-  myfile << "\n";
+  data_file << "\n";
 }
 
 
@@ -535,7 +526,7 @@ void ImageConverter::scaleImageRange (HObject ho_Image, HObject *ho_ImageScaled,
 int main(int argc, char **argv)
 {
 
-myfile.open ("/home/azucena/barcode/converter.txt");
+data_file.open ("/home/azucena/barcode/converter.txt");
 
   int init_threads;
   std::string par_bar_model, par_internal_param, par_external_param;
@@ -586,6 +577,6 @@ myfile.open ("/home/azucena/barcode/converter.txt");
   {
     ROS_ERROR("XInitThreads() initialization was not successful.");
   }
-myfile.close();
+data_file.close();
   return 0;
 }
