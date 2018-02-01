@@ -7,7 +7,6 @@
 
 #include <ros/ros.h>
 #include "std_msgs/String.h"
-#include <vector>
 #include <tf/transform_listener.h>
 
 // Includes everything to publish and subscribe to images
@@ -57,14 +56,12 @@ class ImageConverter
     std::string bar_model;                  // .shm file from Param. Server
     HTuple internal_param;                  // .cal file from Param. Server
     HTuple external_param;                  // Pose file from Param. Server
-    std::vector<std::vector<double>> barcodes_vector;
-    std::vector<std::string> bar_code_vector;
 
     int id;
     
   public:
     // Constructor
-    ImageConverter(std::string, HTuple, HTuple, std::vector<std::vector<double>>, std::vector<std::string>);
+    ImageConverter(std::string, HTuple, HTuple);
 
     // Destructor
     ~ImageConverter();
@@ -81,15 +78,12 @@ class ImageConverter
 
 // Constructor is initialized with the 3 parameters in the Param. Server 
 ImageConverter::ImageConverter(std::string _bar_model,
-  HTuple _internal_param, HTuple _external_param,
-  std::vector<std::vector<double>> _barcodes_vector, std::vector<std::string> _bar_code_vector) : it_(nh_)
+  HTuple _internal_param, HTuple _external_param) : it_(nh_)
 {
   // Initialize class members
   bar_model = _bar_model;
   internal_param = _internal_param;
   external_param = _external_param;
-  barcodes_vector = _barcodes_vector;
-  bar_code_vector = _bar_code_vector;
 
   // Subscribe to and publish images using "image_transport"
   image_sub_ = it_.subscribe("/refills_wrist_camera/image_mono", 1,  // This topic is named "/barcode/image" in the report
@@ -152,8 +146,7 @@ try
   GetSystem("clip_region", &hv_ClipRegion);
   SetSystem("clip_region", "false");
 
-std::cout << " ---- New Image: " << halcon_ptr->header.stamp << std::endl;
-myfile << "Image: " << halcon_ptr->header.stamp << " ";
+  myfile << "Image: " << halcon_ptr->header.stamp << " ";
 
   // Process halcon_ptr->image using Halcon Software
   halcon_image = halcon_ptr->image; 
@@ -409,62 +402,8 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
       transform.setRotation(q);
       transform.stamp_ = halcon_ptr->header.stamp;
       br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "b"+barcode_msg.barcode)); 
-/*
-      //Write results to "my file" to analyze data
-      myfile << halcon_ptr->header.stamp << " ";
-      myfile << hv_decoded_data[i].S() << "\n"; 
-*/
-      // Fill a "row" vector with the barcode information
-      std::string bar_code = hv_decoded_data[i].S().Text();
-      std::vector<double> row(7);
-      row[0] = hv_pose_barcode[0];
-      row[1] = hv_pose_barcode[1];
-      row[2] = hv_pose_barcode[2];
-      row[3] = q[0];
-      row[4] = q[1];
-      row[5] = q[2];
-      row[6] = q[3];
 
-      // Check if the marker has already been published
-      int b = 0;
-      for(int a = 0; a < bar_code_vector.size(); a++)
-      {
-      if (bar_code_vector[a] == bar_code)
-        {
-          b = 1;
-        }
-      }
-      if(b==0)
-      {
-        barcodes_vector.push_back(row);
-        bar_code_vector.push_back(bar_code);
-        //std::cout << bar_code << std::endl;
-
-/*
-        marker.pose.position.x = barcodes_vector[barcodes_vector.size() - 1][0];
-        marker.pose.position.y = barcodes_vector[barcodes_vector.size() - 1][1];
-        marker.pose.position.z = barcodes_vector[barcodes_vector.size() - 1][2];
-        marker.pose.orientation.x = 0.0;//barcodes_vector[barcodes_vector.size() - 1][3];
-        marker.pose.orientation.y = 0.0;//barcodes_vector[barcodes_vector.size() - 1][4];
-        marker.pose.orientation.z = 0.0;//barcodes_vector[barcodes_vector.size() - 1][5];
-        marker.pose.orientation.w = 1.0;//barcodes_vector[barcodes_vector.size() - 1][6];
-*/
- /*       // Create a tf broadcaster for the detected barcode
-        static tf::TransformBroadcaster br;
-        tf::StampedTransform transform;
-        transform.setOrigin( tf::Vector3(marker.pose.position.x, marker.pose.position.y, marker.pose.position.z) );
-        transform.setRotation(q);
-        transform.stamp_ = halcon_ptr->header.stamp;
-        br.sendTransform(tf::StampedTransform(transform, halcon_ptr->header.stamp, "camera_link", "barcode")); 
-*/
-/*
-        // Publish marker
-        marker.id = barcodes_vector.size();
-        marker_pub.publish(marker);
-*/       
-      }
-    std::cout << "*" << barcode_msg.barcode_pose.header.stamp << "  " << barcode_msg.barcode << std::endl;
-    myfile << barcode_msg.barcode << " ";
+      myfile << barcode_msg.barcode << " ";
     }//for
   }//try
   catch (HException &except)
@@ -602,8 +541,6 @@ myfile.open ("/home/azucena/barcode/converter.txt");
   std::string par_bar_model, par_internal_param, par_external_param;
   HTuple hv_internal_param, hv_external_param;               // Camera parameters
   HTuple hv_internal_param_file, hv_external_param_file;     // Camera parameters files
-  std::vector<std::vector<double>> barcodes_vector;
-  std::vector<std::string> bar_code_vector;
   
   // When working under UNIX/Linux it is necessary to turn on the support for
   // multithreading in the Xlib in order to correctly use the Halcon graphics.
@@ -641,7 +578,7 @@ myfile.open ("/home/azucena/barcode/converter.txt");
         hv_external_param_file = par_external_param.c_str();
         ReadPose(hv_external_param_file, &hv_external_param);
  
-        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param, barcodes_vector, bar_code_vector);
+        ImageConverter ic(par_bar_model, hv_internal_param, hv_external_param);
         ros::spin();   
     }
   }
