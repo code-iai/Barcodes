@@ -125,15 +125,15 @@ void ImageConverter::shelfFinder(halcon_bridge::HalconImagePtr halcon_ptr)
 {
   // Halcon local iconic variables
   HObject  ho_gray_image;         // Grayscaled and contrast-adjusted images
-  HObject  ho_ROI;                         // ROI according to "Bar model"
+  HObject  ho_ROI;                // ROI according to "Bar model"
 
-  HImage *halcon_image;          // Halcon image to process  
+  HImage *halcon_image;           // Halcon image to process  
   HImage ho_reduced_image, ho_scaled_image;                
   
   // Halcon local control variables
-  HTuple  hv_image_width, hv_image_height;                                 // Image width and height  
-  HTuple  hv_ClipRegion;                                                                           // 'clip_region' property
-  HTuple  hv_bar_model, hv_model_ID, hv_model_height;          // Bar model properties
+  HTuple  hv_image_width, hv_image_height;                 // Image width and height  
+  HTuple  hv_ClipRegion;                                   // 'clip_region' property
+  HTuple  hv_bar_model, hv_model_ID, hv_model_height;      // Bar model properties
   HTuple  hv_row_center_model, hv_column_center_model;     // Bar model properties
   HTuple  hv_angle_model, hv_scale_model, hv_score_model;  // Bar model properties
 

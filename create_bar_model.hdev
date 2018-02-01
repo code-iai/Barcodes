@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.1" halcon_version="13.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>    * Read model image from file    </c>
+<l>    file_name := '/home/azucena/barcode/images/image_model.jpg'</l>
+<l>    read_image (image_RGB, file_name)</l>
+<l>    rgb1_to_gray (image_RGB, image_gray)</l>
+<l>    scale_image_range (image_gray, scaled_image, 0, 180)</l>
+<c>      </c>
+<c>    * Draw the bar model.</c>
+<c>    * The XLD contours represent the grayvalue edges of the object to be searched for.</c>
+<l>    gen_contour_polygon_xld (line_1, [315,315], [150,1400])</l>
+<l>    gen_contour_polygon_xld (line_2, [338,338], [150,1400])</l>
+<l>    gen_contour_polygon_xld (line_3, [638,638], [150,1400])</l>
+<l>    gen_contour_polygon_xld (line_4, [655,655], [150,1400])</l>
+<l>    concat_obj(line_1,line_2, line_12)</l>
+<l>    concat_obj(line_3,line_4, line_34)</l>
+<l>    concat_obj(line_12,line_34, lines_model)</l>
+<c>    </c>
+<c>    * Create the bar model</c>
+<l>    create_scaled_shape_model_xld( lines_model, 4, -0.39, 0.39, 0.0175, 0.6, 1.5, 0.01, 'auto', 'ignore_local_polarity', 5, ModelID)</l>
+<l>    write_shape_model (ModelID, 'bar-model.shm')</l>
+<l>    clear_shape_model (ModelID)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
