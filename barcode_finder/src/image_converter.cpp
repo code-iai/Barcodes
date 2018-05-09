@@ -13,7 +13,7 @@
 #include <image_transport/image_transport.h> 
 
 //Halcon libraries 
-#include <halcon_image.h>
+#include <asr_halcon_bridge/halcon_image.h>
 #include "HalconCpp.h"
 
 // When working under UNIX/Linux it is necessary to turn on the support for

@@ -6,7 +6,7 @@
 #include <ros/ros.h>
 #include <iostream>
 #include <sensor_msgs/image_encodings.h>
-#include <halcon_image.h>
+#include <asr_halcon_bridge/halcon_image.h>
 
 // Using image_transport for publishing and subscribing to images in ROS
 #include <image_transport/image_transport.h>
