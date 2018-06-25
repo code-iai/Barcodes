@@ -1,7 +1,7 @@
 <launch>
   <node name="image_converter" pkg="barcode_finder" type="image_converter" output="screen">
-    <param name="bar_model_file" type="str" value="/home/azucena/barcode/bar-model.shm"/>
-    <param name="internal_param_file" type="str" value="/home/azucena/barcode/calibration/myCalib/parameters"/>
-    <param name="external_param_file" type="str" value="/home/azucena/barcode/calibration/myCalib/pose"/>
+    <param name="bar_model_file" type="str" value="/home/amaldo/dm_marker_samples/horiz_bar/bar-model.shm"/>
+    <param name="internal_param_file" type="str" value="/home/amaldo/dm_marker_samples/12mp/new_small_calib.cal"/>
+    <param name="external_param_file" type="str" value="/home/amaldo/dm_marker_samples/12mp/new_calib_pose.dat"/>
   </node>
 </launch>
