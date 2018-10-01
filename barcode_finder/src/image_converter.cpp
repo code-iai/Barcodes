@@ -27,6 +27,10 @@
 
 #include <fstream>
 
+//For usleep
+#include <unistd.h>
+
+
 // data_file used for the evaluation of the system
 std::ofstream data_file;
 
@@ -504,6 +508,8 @@ void ImageConverter::scaleImageRange(HObject ho_Image, HObject *ho_ImageScaled, 
 }
 
 int main(int argc, char **argv) {
+
+    usleep(2000000);
 
     data_file.open("/tmp/converter.txt");
 
