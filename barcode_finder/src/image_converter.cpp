@@ -356,8 +356,8 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             barcode_msg.barcode = hv_decoded_data[i].S().Text();
             barcode_msg.barcode_pose.header.frame_id = halcon_ptr->header.frame_id;
             barcode_msg.barcode_pose.header.stamp = halcon_ptr->header.stamp;
-            barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0];
-            barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1];
+            barcode_msg.barcode_pose.pose.position.x = hv_pose_barcode[0]+0.0085;
+            barcode_msg.barcode_pose.pose.position.y = hv_pose_barcode[1]-0.004;
             barcode_msg.barcode_pose.pose.position.z = hv_pose_barcode[2];
             barcode_msg.barcode_pose.pose.orientation.x = q[0];
             barcode_msg.barcode_pose.pose.orientation.y = q[1];
