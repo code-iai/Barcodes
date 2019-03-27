@@ -78,7 +78,7 @@ ImageConverter::ImageConverter(std::string _bar_model,
     external_param = _external_param;
 
     // Subscribe to and publish images using "image_transport"
-    image_sub_ = it_.subscribe("/refills_wrist_camera/image_mono",
+    image_sub_ = it_.subscribe("image_in",
                                1,  // This topic is named "/barcode/image" in the report
                                &ImageConverter::imageCallback, this);
     image_pub_ = it_.advertise("/barcode/output_images", 5);
