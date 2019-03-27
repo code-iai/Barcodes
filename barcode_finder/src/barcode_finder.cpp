@@ -530,7 +530,7 @@ int main(int argc, char **argv) {
 
 
     if (true) {
-        ros::init(argc, argv, "image_converter");
+        ros::init(argc, argv, "barcode_finder");
         ros::NodeHandle nh("~");
 
         // Get Parameters from Parameter Server
