@@ -36,7 +36,7 @@
   <depend>roscpp</depend>
   <depend>asr_halcon_bridge</depend>
   <depend>cv_bridge</depend>
-  <depend>opencv2</depend>
+  <depend>libopencv-dev</depend>
   <depend>image_transport</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
