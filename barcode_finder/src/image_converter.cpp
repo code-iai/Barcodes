@@ -206,7 +206,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
     std_msgs::String msg;                                  // Message to publish
     HTuple grayvalue(5.0);
 
-    try {
+    // try {
         // Find barcode and get its properties
         hv_barcode_handle.CreateBarCodeModel(HTuple(), HTuple());
         ho_symbol_regions = image_to_process.FindBarCode(hv_barcode_handle, "EAN-8", &hv_decoded_data);
@@ -296,7 +296,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             RegionFeatures(ho_sorted_regions, "height", &hv_region_row11);
 
             // Display the Barcode-Regions in the image
-            image_regions = image_regions.PaintRegion(ho_sorted_regions, grayvalue, HString("fill"));
+            // image_regions = image_regions.PaintRegion(ho_sorted_regions, grayvalue, HString("fill"));
 
             // Create two tuples with the values of the
             // image barcode/rectangle-corners coordinates in pixels
@@ -387,9 +387,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             marker.color.b = 1.0f;
             marker.color.a = 1.0;
 
-            marker.pose.position.x = hv_pose_barcode[0];
-            marker.pose.position.y = hv_pose_barcode[1];
-            marker.pose.position.z = hv_pose_barcode[2];
+            marker.pose.position = barcode_msg.barcode_pose.pose.position;
             marker.pose.orientation.x = 0.0;
             marker.pose.orientation.y = 0.0;
             marker.pose.orientation.z = 0.0;
@@ -410,11 +408,11 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
 
 
         marker_pub.publish(markers);
-    }//try
-    catch (HException &except) {
-        std::cout << "Exception while running barcodeFinder" << std::endl;
-        std::cout << except.ErrorMessage() << std::endl;
-    }
+    // }//try
+    // catch (HException &except) {
+    //     std::cout << "Exception while running barcodeFinder" << std::endl;
+    //     std::cout << except.ErrorMessage() << std::endl;
+    // }
     try {
         // Publish image over ROS
         halcon_bridge::HalconImage *halcon_img_ptr(new halcon_bridge::HalconImage);
