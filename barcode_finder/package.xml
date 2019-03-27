@@ -36,13 +36,13 @@
   <depend>roscpp</depend>
   <depend>asr_halcon_bridge</depend>
   <depend>cv_bridge</depend>
-  <depend>libopencv-dev</depend>
+  <!--depend>libopencv-dev</depend-->
   <depend>image_transport</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>message_generation</depend>
   <depend>refills_msgs</depend>
-  <depend>message_runtime</depend>
+  <!--depend>message_runtime</depend-->
   <depend>tf</depend>
   <buildtool_depend>catkin</buildtool_depend>
 

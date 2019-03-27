@@ -10,15 +10,6 @@ add_definitions(-std=c++11)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-#find_package(catkin REQUIRED)
-
-#From Benny
-#find_package(catkin REQUIRED COMPONENTS roscpp cv_bridge sensor_msgs image_transport actionlib actionlib_msgs robot_assisted_calibration)
-#find_package(OpenCV 3 REQUIRED)
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -30,18 +21,9 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
-find_package( OpenCV REQUIRED )
+#find_package( OpenCV REQUIRED )
+#find_package(X11 REQUIRED)
 
-find_package(X11 REQUIRED)
-
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
-# find_package(Boost REQUIRED COMPONENTS thread)
-
-## Uncomment this if the package has a setup.py. This macro ensures
-## modules and global scripts declared therein get installed
-## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -128,7 +110,6 @@ catkin_package(
 #  LIBRARIES barcode_finder
    CATKIN_DEPENDS roscpp 
    asr_halcon_bridge
-   message_runtime
 #  DEPENDS system_lib
 )
 
@@ -145,7 +126,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   )
 
-include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
+#include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
 
   #From Benny for include_directories
   #${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
@@ -167,8 +148,6 @@ link_directories($ENV{HALCONROOT}/lib/$ENV{HALCONARCH})
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(image_converter src/image_converter.cpp)
-add_executable(image_publisher src/image_publisher.cpp)
-add_executable(tf_listener src/tf_listener.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -188,24 +167,8 @@ target_link_libraries(image_converter
    halconcpp
    halcon
    ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   X11
-)
-
-target_link_libraries(image_publisher
-   halconcpp
-   halcon
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   X11
-)
-
-target_link_libraries(tf_listener
-   halconcpp
-   halcon
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   X11
+   #${OpenCV_LIBRARIES}
+   #X11
 )
 
 #############
