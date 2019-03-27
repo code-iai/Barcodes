@@ -373,7 +373,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             marker.id = i;
             marker.action = visualization_msgs::Marker::ADD;
             marker.type = visualization_msgs::Marker::CUBE;
-            marker.lifetime = ros::Duration(0.1);
+            marker.lifetime = ros::Duration(1);
             marker.header.stamp = halcon_ptr->header.stamp;
             marker.header.frame_id = halcon_ptr->header.frame_id;
 
