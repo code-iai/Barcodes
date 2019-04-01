@@ -494,7 +494,7 @@ void ImageConverter::scaleImageRange(HObject ho_Image, HObject *ho_ImageScaled, 
 
 int main(int argc, char **argv) {
 
-    usleep(2000000);
+    usleep(3000000);
 
 
     int init_threads;
