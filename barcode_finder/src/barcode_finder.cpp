@@ -2,8 +2,6 @@
 // converts the sensor_msgs::Image to a HalconCpp::HImage and processes it.
 // The node reads from file a "Shelf model" which was created in order to
 // identify the shelf where the labels are located.
-// The node finds the barcodes and publishes the number and 
-// location on the "/barcode/data" topic.
 
 #include <ros/ros.h>
 #include "std_msgs/String.h"
@@ -37,7 +35,6 @@ using namespace HalconCpp;
 class ImageConverter {
 private:
     ros::NodeHandle nh_;
-    ros::Publisher data_pub;                // Publisher for barcode information
     ros::Publisher barcode_pose_pub;        // Publisher for the estimated pose of the barcodes
     ros::Publisher marker_pub;              // Publisher for barcode markers
     image_transport::ImageTransport it_;    // Create an ImageTransport instance
@@ -82,8 +79,6 @@ ImageConverter::ImageConverter(std::string _bar_model,
                                1,  // This topic is named "/barcode/image" in the report
                                &ImageConverter::imageCallback, this);
     image_pub_ = it_.advertise("/barcode/output_images", 5);
-    // Publish barcode information as string data
-    data_pub = nh_.advertise<std_msgs::String>("barcode/data", 1);
     // Publish barcode information using the refills message
     barcode_pose_pub = nh_.advertise<refills_msgs::Barcode>("barcode/pose", 5);
     //Publish markers in rviz
@@ -329,27 +324,6 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
                                                            (hv_pose_barcode[4] * 3.1416 / 180),
                                                            (hv_pose_barcode[5] * 3.1416 / 180));
 
-            // Convert Barcode Pose to string to publish it
-            hv_barcode = ("BARCODE " + (i + 1));
-            TupleString(hv_pose_barcode[0], ".3f", &hv_x_trans);
-            TupleString(hv_pose_barcode[1], ".3f", &hv_y_trans);
-            TupleString(hv_pose_barcode[2], ".3f", &hv_z_trans);
-            TupleString(hv_pose_barcode[3], ".3f", &hv_x_rot);
-            TupleString(hv_pose_barcode[4], ".3f", &hv_y_rot);
-            TupleString(hv_pose_barcode[5], ".3f", &hv_z_rot);
-
-            barcode_info = hv_barcode.S().Text() + std::string(": ") +
-                           hv_decoded_data[i].S().Text() +
-                           std::string(" POSE: x: ") + hv_x_trans.S().Text() +
-                           std::string(" m, y: ") + hv_y_trans.S().Text() +
-                           std::string(" m, z: ") + hv_z_trans.S().Text() +
-                           std::string(" m, X: ") + hv_x_rot.S().Text() +
-                           std::string("°, Y: ") + hv_y_rot.S().Text() +
-                           std::string("°, Z: ") + hv_z_rot.S().Text() + std::string("°");
-
-            // Publish the barcode pose as a string
-            msg.data = barcode_info;
-            data_pub.publish(msg);
 
             // Fill and publish the refills message
             refills_msgs::Barcode barcode_msg;
