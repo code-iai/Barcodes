@@ -1,8 +1,8 @@
 <launch>
   <node name="barcode_finder" pkg="barcode_finder" type="barcode_finder" output="screen">
-    <param name="bar_model_file" type="str" value="/home/amaldo/dm_marker_samples/horiz_bar/bar-model.shm"/>
-    <param name="internal_param_file" type="str" value="/home/amaldo/dm_marker_samples/12mp/new_small_calib.cal"/>
-    <param name="external_param_file" type="str" value="/home/amaldo/dm_marker_samples/12mp/new_calib_pose.dat"/>
+    <param name="bar_model_file" type="str" value="$(find iai_kmr_iiwa_bringup)/config/bar-model.shm"/>
+    <param name="internal_param_file" type="str" value="$(find iai_kmr_iiwa_bringup)/config/refills_wrist_cam.cal"/>
+    <param name="external_param_file" type="str" value="$(find iai_kmr_iiwa_bringup)/config/refills_wrist_cam_pose.dat"/>
     <remap from="image_in" to="refills_wrist_camera/image_raw"/>
   </node>
 </launch>
