@@ -213,7 +213,9 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
                    
         barcodes_.regions_ = image_to_process.FindBarCode(barcode_handle, "EAN-8", &barcodes_.strings_);
         barcodes_.orientations_ = barcode_handle.GetBarCodeResult("all", "orientation");       
-        
+        // will this assumption ever break? can we find more than 255 barcodes in a single image?;
+        barcodes_.num_of_barcodes_found_ = static_cast<uint8_t>(barcodes_.strings_.Length());
+ 
 
         
         HalconCpp::HTuple hv_region_center_rows, hv_region_center_cols;
@@ -227,7 +229,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
         HalconCpp::HTuple region_upper_left_row = barcodes_.regions_.RegionFeatures(HalconCpp::HTuple("row1"));
         HalconCpp::HTuple region_upper_left_col = barcodes_.regions_.RegionFeatures(HalconCpp::HTuple("column1"));
         HalconCpp::HTuple region_bottom_right_row = barcodes_.regions_.RegionFeatures(HalconCpp::HTuple("row2"));
-        HalconCpp::HTuple region_bootom_right_col = barcodes_.regions_.RegionFeatures(HalconCpp::HTuple("column2"));
+        HalconCpp::HTuple region_bottom_right_col = barcodes_.regions_.RegionFeatures(HalconCpp::HTuple("column2"));
 
         double true_bc_ratio = 4.5/17.0;
 
@@ -265,7 +267,7 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             barcode_regions_.push_back(br); 
          
             HalconCpp::HTuple image_cols, image_rows;
-            if (barcodes_.orientations_[i].D() >= 0) {
+            /*if (barcodes_.orientations_[i].D() >= 0) {
                 image_cols = ((HalconCpp::HTuple(region_upper_left_col[i]).Append(region_upper_left_col[i]))
                             .Append(region_upper_left_col[i] + adapted_width)).Append(region_upper_left_col[i].D() + adapted_width);
                 image_rows = ((HalconCpp::HTuple(region_bottom_right_row[i]).Append(region_upper_left_row[i])).Append(region_bottom_right_row[i])).Append(region_upper_left_row[i]);
@@ -273,25 +275,29 @@ void ImageConverter::barcodeFinder(HImage image_to_process, HTuple image_width, 
             else {
                 image_cols = ((HalconCpp::HTuple(region_upper_left_col[i] + adapted_width).Append(region_upper_left_col[i] + adapted_width)).Append(region_upper_left_col[i])).Append(region_upper_left_col[i]);
                 image_rows = ((HalconCpp::HTuple(region_upper_left_row[i]).Append(region_bottom_right_row[i])).Append(region_upper_left_row[i])).Append(region_bottom_right_row[i]);
-            }
+            }*/
+            image_cols = ((HalconCpp::HTuple(region_bottom_right_col[i]).Append(region_upper_left_col[i]))
+                            .Append(region_bottom_right_col[i])).Append(region_upper_left_col[i]);
+            image_rows = ((HalconCpp::HTuple(region_bottom_right_row[i]).Append(region_bottom_right_row[i])).Append(region_bottom_right_row[i]+adapted_width)).Append(region_bottom_right_row[i]+adapted_width);
+
             HalconCpp::HTuple pose_errors, ho_pose;
 
             HalconCpp::VectorToPose(world_x, world_y, world_z, image_rows, image_cols, internal_param, "planar_analytic", "error", &ho_pose, &pose_errors);
 
-             ROS_DEBUG_STREAM(ho_pose[0].D() << " " << ho_pose[1].D() << " " << ho_pose[2].D());
-             tf::Stamped<tf::Pose> pose_stamped;
-             pose_stamped.setOrigin(tf::Vector3(ho_pose[0].D(), ho_pose[1].D(), ho_pose[2].D()));
-             tf::Quaternion q = tf::createQuaternionFromRPY((ho_pose[3].D() * M_PI / 180), (ho_pose[4].D() * M_PI / 180),
-                                                   (ho_pose[5].D() * M_PI / 180));
-             pose_stamped.setRotation(q);
-             pose_stamped.stamp_ = halcon_ptr->header.stamp;
-             pose_stamped.frame_id_ = halcon_ptr->header.frame_id;
-             barcodes_.poses_.push_back(pose_stamped);
+            ROS_DEBUG_STREAM(ho_pose[0].D() << " " << ho_pose[1].D() << " " << ho_pose[2].D());
+            tf::Stamped<tf::Pose> pose_stamped;
+            pose_stamped.setOrigin(tf::Vector3(ho_pose[0].D(), ho_pose[1].D(), ho_pose[2].D()));
+            tf::Quaternion q = tf::createQuaternionFromRPY((ho_pose[3].D() * M_PI / 180), (ho_pose[4].D() * M_PI / 180),
+                                                  (ho_pose[5].D() * M_PI / 180));
+            pose_stamped.setRotation(q);
+            pose_stamped.stamp_ = halcon_ptr->header.stamp;
+            pose_stamped.frame_id_ = halcon_ptr->header.frame_id;
+            barcodes_.poses_.push_back(pose_stamped);
         
-             refills_msgs::Barcode barcode_msg;
-             barcode_msg.barcode = br.code;
-             tf::poseStampedTFToMsg(pose_stamped, barcode_msg.barcode_pose);
-             barcode_pose_pub.publish(barcode_msg);
+            refills_msgs::Barcode barcode_msg;
+            barcode_msg.barcode = br.code;
+            tf::poseStampedTFToMsg(pose_stamped, barcode_msg.barcode_pose);
+            barcode_pose_pub.publish(barcode_msg);
 
             // Set marker parameters and publish
 
